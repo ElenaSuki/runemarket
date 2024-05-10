@@ -102,6 +102,17 @@ export const action: ActionFunction = async ({ request }) => {
       });
     }
 
+    const redisRune = await RedisInstance.hvals(
+      `address:${data.address}:validrunes`,
+    );
+
+    redisRune.forEach((rune) => {
+      const obj: Omit<ValidAddressRuneAsset, "type" | "inscription"> =
+        JSON.parse(rune);
+
+      validRunes.set(`${obj.txid}:${obj.vout}`, obj);
+    });
+
     const validRunesArray = Array.from(validRunes.values());
 
     const nftItems = await DatabaseInstance.rune_collection_item.findMany({

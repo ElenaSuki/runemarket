@@ -6,6 +6,7 @@ import { z } from "zod";
 import { pushTx } from "@/lib/apis/mempool";
 import { checkUTXOBalance, getInscriptionInfo } from "@/lib/apis/unisat/api";
 import DatabaseInstance from "@/lib/server/prisma.server";
+import RedisInstance from "@/lib/server/redis.server";
 import { sleep } from "@/lib/utils";
 import { isTestnetAddress, reverseBuffer } from "@/lib/utils/address-helpers";
 import { validateInputSignature } from "@/lib/utils/bitcoin-utils";
@@ -200,6 +201,14 @@ export const action: ActionFunction = async ({ request }) => {
       );
 
       await DatabaseInstance.$transaction(async () => {
+        await Promise.all(
+          offers.map((offer) => {
+            return RedisInstance.hdel(
+              `address:${offer.lister}:validrunes`,
+              `${offer.rune_spaced_name}`,
+            );
+          }),
+        );
         await DatabaseInstance.activities.createMany({
           data: offers.map((offer) => {
             return {
