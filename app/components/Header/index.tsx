@@ -55,7 +55,7 @@ const Header: React.FC = () => {
           <a
             href="https://twitter.com/runebundler"
             target="_blank"
-            className="h-5 w-5 opacity-100 transition-opacity hover:opacity-75"
+            className="h-6 w-6 opacity-100 transition-opacity hover:opacity-75"
           >
             <img
               src="/icons/twitter.svg"
@@ -65,7 +65,7 @@ const Header: React.FC = () => {
           <a
             href="https://t.me/runebundler"
             target="_blank"
-            className="h-7 w-7 opacity-100 transition-opacity hover:opacity-75"
+            className="h-6 w-6 opacity-100 transition-opacity hover:opacity-75"
           >
             <img
               src="/icons/telegram.svg"
