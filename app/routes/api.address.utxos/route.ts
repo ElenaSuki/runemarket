@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getLastBlockHeight } from "@/lib/apis/mempool";
 import { getBTCUTXOs } from "@/lib/apis/unisat/api";
+import RedisInstance from "@/lib/server/redis.server";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
@@ -21,6 +22,16 @@ export const action: ActionFunction = async ({ request }) => {
       RequestSchema.parse(data);
     } catch (e) {
       return json(errorResponse(10001));
+    }
+
+    const cache = await RedisInstance.get(`address:utxos:${data.address}`);
+
+    if (cache) {
+      return json({
+        code: 0,
+        error: false,
+        data: JSON.parse(cache),
+      });
     }
 
     const network =
@@ -59,6 +70,20 @@ export const action: ActionFunction = async ({ request }) => {
 
       return true;
     });
+
+    await RedisInstance.set(
+      `address:utxos:${data.address}`,
+      JSON.stringify(
+        validUTXOs.map((utxo) => ({
+          txid: utxo.txid,
+          vout: utxo.vout,
+          value: utxo.satoshi,
+        })),
+      ),
+      "EX",
+      30,
+      "NX",
+    );
 
     return json({
       code: 0,
