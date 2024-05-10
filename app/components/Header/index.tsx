@@ -1,19 +1,10 @@
-import { useLocation, useNavigate } from "@remix-run/react";
-import {
-  Fuel,
-  Link2,
-  Link2Off,
-  Menu,
-  Pickaxe,
-  Store,
-  Wallet,
-  Wrench,
-} from "lucide-react";
+import { useNavigate } from "@remix-run/react";
+import { Fuel, Link2, Link2Off, Menu, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useGasFee } from "@/lib/hooks/useGasFee";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
-import { cn, formatAddress } from "@/lib/utils";
+import { formatAddress } from "@/lib/utils";
 
 import { Button } from "../Button";
 import CopyButton from "../CopyButton";
@@ -26,32 +17,10 @@ import {
 import { Sheet, SheetContent } from "../Sheet";
 import { useWallet } from "../Wallet/hooks";
 
-// const Navigations = [
-//   {
-//     name: "Market",
-//     link: "/",
-//     icon: <Store className="h-6 w-6" />,
-//     disable: false,
-//   },
-//   {
-//     name: "Tools",
-//     link: "/tools",
-//     icon: <Wrench className="h-6 w-6" />,
-//     disable: false,
-//   },
-//   {
-//     name: "Mint",
-//     link: "/mint",
-//     icon: <Pickaxe className="h-6 w-6" />,
-//     disable: true,
-//   },
-// ];
-
 const Header: React.FC = () => {
   const { account, setModalOpen, disconnect } = useWallet();
   const { isMobile } = useMediaQuery();
   const nagigate = useNavigate();
-  const { pathname } = useLocation();
   const { gasFee } = useGasFee();
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -81,31 +50,28 @@ const Header: React.FC = () => {
               alt="runebunlder"
             />
           </div>
-          {/* <div className="hidden items-center space-x-4 text-xl md:flex">
-            {Navigations.map((item) => (
-              <div
-                key={item.name}
-                onClick={() => {
-                  if (!item.disable) {
-                    nagigate(item.link);
-                  }
-                }}
-                className={cn("transition-colors", {
-                  "text-theme":
-                    item.link === "/"
-                      ? pathname === "/" || pathname.startsWith("/market")
-                      : pathname.startsWith(item.link) && !item.disable,
-                  "cursor-not-allowed text-secondary": item.disable,
-                  "cursor-pointer hover:text-theme": !item.disable,
-                })}
-              >
-                {item.name}
-              </div>
-            ))}
-          </div> */}
         </div>
-
         <div className="flex shrink-0 items-center space-x-2">
+          <a
+            href="https://twitter.com/runebundler"
+            target="_blank"
+            className="h-5 w-5 opacity-100 transition-opacity hover:opacity-75"
+          >
+            <img
+              src="/icons/twitter.svg"
+              alt="twitter"
+            />
+          </a>
+          <a
+            href="https://t.me/runebundler"
+            target="_blank"
+            className="h-7 w-7 opacity-100 transition-opacity hover:opacity-75"
+          >
+            <img
+              src="/icons/telegram.svg"
+              alt="telegram"
+            />
+          </a>
           <div className="flex items-center space-x-1">
             <Fuel className="h-5 w-5" />
             <div className="text-nowrap text-sm">{avgGasFee} sat / vB</div>
@@ -143,7 +109,6 @@ const Header: React.FC = () => {
           />
         </div>
       </div>
-
       <Sheet
         open={isMobile && sheetOpen}
         onOpenChange={setSheetOpen}
@@ -185,28 +150,6 @@ const Header: React.FC = () => {
               </div>
             )}
           </div>
-          {/* <div className="border-b py-2 text-2xl font-medium">Menu</div>
-          <div className="space-y-3">
-            {Navigations.map((item) => (
-              <div
-                key={item.name}
-                onClick={() => nagigate(item.link)}
-                className={cn(
-                  "flex w-full  items-center space-x-3 rounded-lg bg-secondary p-6 transition-colors hover:bg-theme hover:text-white",
-                  {
-                    "pointer-events-none cursor-not-allowed text-secondary":
-                      item.disable,
-                  },
-                  {
-                    "cursor-pointer text-primary": !item.disable,
-                  },
-                )}
-              >
-                {item.icon}
-                <span className="text-xl">{item.name}</span>
-              </div>
-            ))}
-          </div> */}
         </SheetContent>
       </Sheet>
     </header>
