@@ -1,0 +1,20 @@
+{
+  "singleAttributePerLine": true,
+  "endOfLine": "lf",
+  "plugins": [
+    "@trivago/prettier-plugin-sort-imports",
+    "prettier-plugin-tailwindcss"
+  ],
+  "tailwindConfig": "./tailwind.config.ts",
+  "tailwindAttributes": ["className"],
+  "importOrder": [
+    "<THIRD_PARTY_MODULES>",
+    "^@/lib/(.*)$",
+    "^@/server/(.*)$",
+    "^@/components/(.*)$",
+    "^@/(.*)$",
+    "^[./]"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true
+}

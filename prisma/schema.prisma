@@ -1,0 +1,125 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextIndex", "fullTextSearch"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model orders {
+  id              Int     @id @default(autoincrement())
+  bid             String  @unique @db.Char(64)
+  rune_id         String  @db.VarChar(255)
+  rune_name       String  @db.VarChar(255)
+  unit_price      Float   @db.Float
+  total_price     BigInt  @db.UnsignedBigInt
+  amount          Int     @db.UnsignedInt
+  lister          String  @db.VarChar(255)
+  buyer           String  @db.VarChar(255)
+  item_receiver   String  @db.VarChar(255)
+  psbt            String  @db.LongText
+  tx_id           String  @db.Char(64)
+  create_at       Int     @db.UnsignedInt
+  collection_name String? @db.VarChar(255)
+
+  @@index([rune_id])
+  @@index([rune_name])
+  @@index([lister, buyer])
+  @@index([collection_name])
+}
+
+model offers {
+  id               Int     @id @default(autoincrement())
+  bid              String  @unique @db.Char(64)
+  rune_id          String  @db.VarChar(255)
+  rune_name        String  @db.VarChar(255)
+  rune_spaced_name String  @db.VarChar(255)
+  symbol           String  @db.VarChar(255)
+  unit_price       Float   @db.Float
+  total_price      BigInt  @db.UnsignedBigInt
+  amount           Int     @db.UnsignedInt
+  divisibility     Int     @db.UnsignedTinyInt
+  lister           String  @db.VarChar(255)
+  funding_receiver String  @db.VarChar(255)
+  unsigned_psbt    String  @db.LongText
+  psbt             String  @db.LongText
+  status           Int     @db.UnsignedTinyInt
+  location_txid    String  @db.Char(64)
+  location_vout    Int     @db.UnsignedInt
+  location_value   Int     @db.UnsignedInt
+  inscription_txid String? @db.Char(64)
+  inscription_vout Int?    @db.UnsignedInt
+  create_at        Int     @db.UnsignedInt
+  update_at        Int     @db.UnsignedInt
+  collection_name  String? @db.VarChar(255)
+  inscription_id   String? @db.VarChar(255)
+
+  @@index([status, rune_name])
+  @@index([status, lister])
+  @@index([status, rune_id])
+  @@index([status, collection_name])
+}
+
+model activities {
+  id               Int     @id @default(autoincrement())
+  rune_id          String  @db.VarChar(255)
+  rune_name        String  @db.VarChar(255)
+  rune_spaced_name String  @db.VarChar(255)
+  collection_name  String? @db.VarChar(255)
+  inscription_id   String? @db.VarChar(255)
+  item_lister      String  @db.VarChar(255)
+  item_receiver    String? @db.VarChar(255)
+  symbol           String  @db.VarChar(255)
+  amount           Int     @db.UnsignedInt
+  unit_price       Float   @db.Float
+  total_price      BigInt  @db.UnsignedBigInt
+  type             String  @db.VarChar(255)
+  tx_id            String? @db.Char(64)
+  timestamp        Int     @db.UnsignedInt
+
+  @@index([rune_name])
+  @@index([collection_name])
+  @@index([item_lister, item_receiver])
+}
+
+model rune_token {
+  id           Int    @id @default(autoincrement())
+  rune_id      String @unique @db.VarChar(255)
+  name         String @db.VarChar(255)
+  spaced_name  String @db.VarChar(255)
+  symbol       String @db.VarChar(255)
+  etch_tx_hash String @db.Char(64)
+  holders      Int    @db.UnsignedInt
+  divisibility Int    @db.UnsignedTinyInt
+  supply       String @db.VarChar(255)
+  sort         Int    @db.UnsignedTinyInt
+
+  @@index([name])
+}
+
+model rune_collection {
+  id           Int     @id @default(autoincrement())
+  name         String  @db.VarChar(255)
+  display_name String  @db.VarChar(255)
+  description  String? @db.LongText
+  x_link       String? @db.VarChar(255)
+  symbol       String  @db.VarChar(255)
+  sort         Int     @db.UnsignedTinyInt
+
+  @@index([name])
+}
+
+model rune_collection_item {
+  id               Int    @id @default(autoincrement())
+  collection_name  String @db.VarChar(255)
+  rune_id          String @db.VarChar(255)
+  rune_name        String @db.VarChar(255)
+  rune_spaced_name String @db.VarChar(255)
+  etch_tx_hash     String @unique @db.Char(64)
+  valid            Int    @db.UnsignedTinyInt
+
+  @@index([valid, collection_name])
+  @@index([valid, rune_spaced_name])
+}

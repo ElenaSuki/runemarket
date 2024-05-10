@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+    font-family: "Ubuntu", sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--theme);
+  }
+
+  :root {
+    --theme: #0bc5ea;
+    --theme-hover: #38bdf8;
+    --border: #4a5568;
+    --background-primary: #171923;
+    --background-secondary: #2d3748;
+    --background-skeleton: #262626;
+    --background-card: #1a202c;
+    --font-primary: #ffffff;
+    --font-background: #000;
+    --font-secondary: #cbd5e0;
+    --error: #dc2626;
+  }
+
+  img {
+    image-rendering: pixelated;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
