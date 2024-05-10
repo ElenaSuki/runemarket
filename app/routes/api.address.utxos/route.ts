@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getLastBlockHeight } from "@/lib/apis/mempool";
 import { getBTCUTXOs } from "@/lib/apis/unisat/api";
+import { getAddressUTXOs } from "@/lib/apis/wizz";
 import RedisInstance from "@/lib/server/redis.server";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
@@ -38,7 +39,7 @@ export const action: ActionFunction = async ({ request }) => {
       data.network === "bitcoin" ? networks.bitcoin : networks.testnet;
 
     const [utxos, blockHeight] = await Promise.all([
-      getBTCUTXOs(network, data.address),
+      getAddressUTXOs(network, data.address),
       getLastBlockHeight(network),
       // getAddressRuneBalance(network, data.address),
     ]);
@@ -77,7 +78,7 @@ export const action: ActionFunction = async ({ request }) => {
         validUTXOs.map((utxo) => ({
           txid: utxo.txid,
           vout: utxo.vout,
-          value: utxo.satoshi,
+          value: utxo.value,
         })),
       ),
       "EX",
@@ -91,7 +92,7 @@ export const action: ActionFunction = async ({ request }) => {
       data: validUTXOs.map((utxo) => ({
         txid: utxo.txid,
         vout: utxo.vout,
-        value: utxo.satoshi,
+        value: utxo.value,
       })),
     });
   } catch (e) {

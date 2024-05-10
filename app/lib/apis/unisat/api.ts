@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Network, networks } from "bitcoinjs-lib";
 
+import RedisInstance from "@/lib/server/redis.server";
 import { AddressRuneAsset } from "@/lib/types/rune";
 import { sleep } from "@/lib/utils";
 
@@ -27,11 +28,29 @@ const AxiosInstance = axios.create({
 });
 
 export const getRuneInfo = async (network: Network, runeId: string) => {
+  const cache = await RedisInstance.get(`unisat:rune:info:${runeId}`);
+
+  if (cache) {
+    return JSON.parse(cache);
+  }
+
   const resp = await AxiosInstance.get<{
     code: number;
     message: string;
     data: RunesInfoReq | null;
   }>(`${BaseUrl(network)}/v1/indexer/runes/${runeId}/info`);
+
+  if (!resp.data.data) {
+    throw new Error("Rune not found");
+  }
+
+  await RedisInstance.set(
+    `unisat:rune:info:${runeId}`,
+    JSON.stringify(resp.data.data),
+    "EX",
+    60 * 60,
+    "NX",
+  );
 
   return resp.data.data;
 };
@@ -59,6 +78,14 @@ export const getAddressRuneUTXOs = async (
   address: string,
   runeId: string,
 ): Promise<AddressRuneAsset[]> => {
+  const cache = await RedisInstance.get(
+    `unisat:address:rune:utxo:${address}:${runeId}`,
+  );
+
+  if (cache) {
+    return JSON.parse(cache);
+  }
+
   const resp = await AxiosInstance.get<{
     code: number;
     message: string;
@@ -74,7 +101,7 @@ export const getAddressRuneUTXOs = async (
     },
   });
 
-  return resp.data.data.utxo.map((utxo) => ({
+  const array = resp.data.data.utxo.map((utxo) => ({
     txid: utxo.txid,
     vout: utxo.vout,
     value: utxo.satoshi,
@@ -90,6 +117,16 @@ export const getAddressRuneUTXOs = async (
       divisibility: rune.divisibility,
     })),
   }));
+
+  await RedisInstance.set(
+    `unisat:address:rune:utxo:${address}:${runeId}`,
+    JSON.stringify(array),
+    "EX",
+    60 * 1,
+    "NX",
+  );
+
+  return array;
 };
 
 export const getAddressRuneBalanceList = async (
@@ -111,7 +148,7 @@ export const getAddressRuneBalanceList = async (
     },
   });
 
-  return resp.data.data.detail.map((rune) => ({
+  const array = resp.data.data.detail.map((rune) => ({
     runeId: rune.runeid,
     rune: rune.rune,
     symbol: rune.symbol,
@@ -119,6 +156,8 @@ export const getAddressRuneBalanceList = async (
     amount: (BigInt(rune.amount) / 10n ** BigInt(rune.divisibility)).toString(),
     divisibility: rune.divisibility,
   }));
+
+  return array;
 };
 
 export const getAddressRunes = async (
@@ -195,7 +234,22 @@ export const checkUTXOBalance = async (
   network: Network,
   txid: string,
   index: number,
-) => {
+): Promise<
+  {
+    runeId: string;
+    rune: string;
+    symbol: string;
+    spacedRune: string;
+    amount: string;
+    divisibility: number;
+  }[]
+> => {
+  const cache = await RedisInstance.get(`unisat:utxo:balance:${txid}:${index}`);
+
+  if (cache) {
+    return JSON.parse(cache);
+  }
+
   const resp = await AxiosInstance.get<{
     code: number;
     message: string;
@@ -211,7 +265,7 @@ export const checkUTXOBalance = async (
 
   if (resp.data.data.length === 0) return [];
 
-  return resp.data.data.map((rune) => ({
+  const array = resp.data.data.map((rune) => ({
     runeId: rune.runeid,
     rune: rune.rune,
     symbol: rune.symbol,
@@ -219,12 +273,40 @@ export const checkUTXOBalance = async (
     amount: rune.amount,
     divisibility: rune.divisibility,
   }));
+
+  await RedisInstance.set(
+    `unisat:utxo:balance:${txid}:${index}`,
+    JSON.stringify(array),
+    "EX",
+    60 * 1,
+    "NX",
+  );
+
+  return array;
 };
 
 export const getAddressInscriptions = async (
   network: Network,
   address: string,
-) => {
+): Promise<
+  {
+    utxo: {
+      txid: string;
+      vout: number;
+      satoshi: number;
+      isSpent: boolean;
+    };
+    inscriptionId: string;
+  }[]
+> => {
+  const cache = await RedisInstance.get(
+    `unisat:address:inscription:${address}`,
+  );
+
+  if (cache) {
+    return JSON.parse(cache);
+  }
+
   const resp = await AxiosInstance.get<{
     data: {
       inscription: {
@@ -244,15 +326,33 @@ export const getAddressInscriptions = async (
     },
   });
 
-  return resp.data.data.inscription.filter(
+  const array = resp.data.data.inscription.filter(
     (inscription) => !inscription.utxo.isSpent,
   );
+
+  await RedisInstance.set(
+    `unisat:address:inscription:${address}`,
+    JSON.stringify(array),
+    "EX",
+    60 * 1,
+    "NX",
+  );
+
+  return array;
 };
 
 export const getInscriptionInfo = async (
   network: Network,
   inscriptionId: string,
-) => {
+): Promise<UnisatInscriptionInfoType> => {
+  const cache = await RedisInstance.get(
+    `unisat:inscription:info:${inscriptionId}`,
+  );
+
+  if (cache) {
+    return JSON.parse(cache);
+  }
+
   const resp = await AxiosInstance.get<{
     code: number;
     message: string;
@@ -263,10 +363,32 @@ export const getInscriptionInfo = async (
     throw new Error("Inscription not found");
   }
 
+  await RedisInstance.set(
+    `unisat:inscription:info:${inscriptionId}`,
+    JSON.stringify(resp.data.data),
+    "EX",
+    60 * 1,
+    "NX",
+  );
+
   return resp.data.data;
 };
 
-export const getRuneHolders = async (network: Network, runeId: string) => {
+export const getRuneHolders = async (
+  network: Network,
+  runeId: string,
+): Promise<
+  {
+    address: string;
+    amount: string;
+  }[]
+> => {
+  const cache = await RedisInstance.get(`unisat:rune:holders:${runeId}`);
+
+  if (cache) {
+    return JSON.parse(cache);
+  }
+
   const resp = await AxiosInstance.get<{
     code: number;
     message: string;
@@ -283,5 +405,15 @@ export const getRuneHolders = async (network: Network, runeId: string) => {
     },
   });
 
-  return resp.data.data.detail;
+  const array = resp.data.data.detail;
+
+  await RedisInstance.set(
+    `unisat:rune:holders:${runeId}`,
+    JSON.stringify(array),
+    "EX",
+    60 * 5,
+    "NX",
+  );
+
+  return array;
 };
