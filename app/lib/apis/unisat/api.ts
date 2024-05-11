@@ -244,12 +244,6 @@ export const checkUTXOBalance = async (
     divisibility: number;
   }[]
 > => {
-  const cache = await RedisInstance.get(`unisat:utxo:balance:${txid}:${index}`);
-
-  if (cache) {
-    return JSON.parse(cache);
-  }
-
   const resp = await AxiosInstance.get<{
     code: number;
     message: string;
@@ -273,14 +267,6 @@ export const checkUTXOBalance = async (
     amount: rune.amount,
     divisibility: rune.divisibility,
   }));
-
-  await RedisInstance.set(
-    `unisat:utxo:balance:${txid}:${index}`,
-    JSON.stringify(array),
-    "EX",
-    60 * 1,
-    "NX",
-  );
 
   return array;
 };
@@ -345,14 +331,6 @@ export const getInscriptionInfo = async (
   network: Network,
   inscriptionId: string,
 ): Promise<UnisatInscriptionInfoType> => {
-  const cache = await RedisInstance.get(
-    `unisat:inscription:info:${inscriptionId}`,
-  );
-
-  if (cache) {
-    return JSON.parse(cache);
-  }
-
   const resp = await AxiosInstance.get<{
     code: number;
     message: string;
@@ -362,14 +340,6 @@ export const getInscriptionInfo = async (
   if (!resp.data.data) {
     throw new Error("Inscription not found");
   }
-
-  await RedisInstance.set(
-    `unisat:inscription:info:${inscriptionId}`,
-    JSON.stringify(resp.data.data),
-    "EX",
-    60 * 1,
-    "NX",
-  );
 
   return resp.data.data;
 };
