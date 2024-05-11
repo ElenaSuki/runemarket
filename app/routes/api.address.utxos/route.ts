@@ -63,6 +63,8 @@ export const action: ActionFunction = async ({ request }) => {
     const validUTXOs = utxos.filter((utxo) => {
       if (utxo.height > blockHeight) return false;
 
+      if (utxo.satoshi <= 546) return false;
+
       if (
         runeUTXOs.some(
           (runeUTXO) =>
