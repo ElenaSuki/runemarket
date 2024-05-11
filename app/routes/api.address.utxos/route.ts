@@ -38,8 +38,6 @@ export const action: ActionFunction = async ({ request }) => {
     const network =
       data.network === "bitcoin" ? networks.bitcoin : networks.testnet;
 
-    const { scripthash } = detectAddressTypeToScripthash(data.address);
-
     const [utxos, blockHeight] = await Promise.all([
       getBTCUTXOs(network, data.address),
       getLastBlockHeight(network),
