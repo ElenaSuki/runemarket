@@ -41,7 +41,7 @@ export const action: ActionFunction = async ({ request }) => {
     const { scripthash } = detectAddressTypeToScripthash(data.address);
 
     const [utxos, blockHeight] = await Promise.all([
-      getBTCUTXOs(network, scripthash),
+      getBTCUTXOs(network, data.address),
       getLastBlockHeight(network),
       // getAddressRuneBalance(network, data.address),
     ]);
