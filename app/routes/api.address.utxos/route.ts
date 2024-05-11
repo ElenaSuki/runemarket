@@ -6,6 +6,7 @@ import { getLastBlockHeight } from "@/lib/apis/mempool";
 import { getBTCUTXOs } from "@/lib/apis/unisat/api";
 import { getAddressUTXOs } from "@/lib/apis/wizz";
 import RedisInstance from "@/lib/server/redis.server";
+import { detectAddressTypeToScripthash } from "@/lib/utils/address-helpers";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
@@ -38,8 +39,10 @@ export const action: ActionFunction = async ({ request }) => {
     const network =
       data.network === "bitcoin" ? networks.bitcoin : networks.testnet;
 
+    const { scripthash } = detectAddressTypeToScripthash(data.address);
+
     const [utxos, blockHeight] = await Promise.all([
-      getAddressUTXOs(network, data.address),
+      getAddressUTXOs(network, scripthash),
       getLastBlockHeight(network),
       // getAddressRuneBalance(network, data.address),
     ]);
