@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { getLastBlockHeight } from "@/lib/apis/mempool";
 import { getBTCUTXOs } from "@/lib/apis/unisat/api";
+import RedisInstance from "@/lib/server/redis.server";
+import { detectAddressTypeToScripthash } from "@/lib/utils/address-helpers";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
@@ -23,8 +25,20 @@ export const action: ActionFunction = async ({ request }) => {
       return json(errorResponse(10001));
     }
 
+    const cache = await RedisInstance.get(`address:utxos:${data.address}`);
+
+    if (cache) {
+      return json({
+        code: 0,
+        error: false,
+        data: JSON.parse(cache),
+      });
+    }
+
     const network =
       data.network === "bitcoin" ? networks.bitcoin : networks.testnet;
+
+    const { scripthash } = detectAddressTypeToScripthash(data.address);
 
     const [utxos, blockHeight] = await Promise.all([
       getBTCUTXOs(network, data.address),
@@ -49,6 +63,8 @@ export const action: ActionFunction = async ({ request }) => {
     const validUTXOs = utxos.filter((utxo) => {
       if (utxo.height > blockHeight) return false;
 
+      if (utxo.satoshi <= 546) return false;
+
       if (
         runeUTXOs.some(
           (runeUTXO) =>
@@ -59,6 +75,20 @@ export const action: ActionFunction = async ({ request }) => {
 
       return true;
     });
+
+    await RedisInstance.set(
+      `address:utxos:${data.address}`,
+      JSON.stringify(
+        validUTXOs.map((utxo) => ({
+          txid: utxo.txid,
+          vout: utxo.vout,
+          value: utxo.satoshi,
+        })),
+      ),
+      "EX",
+      60,
+      "NX",
+    );
 
     return json({
       code: 0,
