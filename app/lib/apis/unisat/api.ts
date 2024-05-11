@@ -55,24 +55,6 @@ export const getRuneInfo = async (network: Network, runeId: string) => {
   return resp.data.data;
 };
 
-export const getRuneInfoList = async (network: Network, start: number) => {
-  const resp = await AxiosInstance.get<{
-    code: number;
-    message: string;
-    data: {
-      total: number;
-      detail: RunesInfoReq[];
-    };
-  }>(`${BaseUrl(network)}/v1/indexer/runes/info-list`, {
-    params: {
-      start,
-      limit: 500,
-    },
-  });
-
-  return resp.data.data.detail;
-};
-
 export const getAddressRuneUTXOs = async (
   network: Network,
   address: string,
@@ -158,42 +140,6 @@ export const getAddressRuneBalanceList = async (
   }));
 
   return array;
-};
-
-export const getAddressRunes = async (
-  network: Network,
-  address: string,
-): Promise<AddressRuneAsset[]> => {
-  const balance = await getAddressRuneBalanceList(network, address);
-
-  const chunks: {
-    runeId: string;
-    rune: string;
-    symbol: string;
-    spacedRune: string;
-    amount: string;
-    divisibility: number;
-  }[][] = [];
-
-  for (let i = 0; i < balance.length; i += 5) {
-    chunks.push(balance.slice(i, i + 5));
-  }
-
-  const utxos: AddressRuneAsset[] = [];
-
-  for (const chunk of chunks) {
-    const assets = await Promise.all(
-      chunk.map((rune) => getAddressRuneUTXOs(network, address, rune.runeId)),
-    );
-
-    assets.flat().forEach((utxo) => {
-      utxos.push(utxo);
-    });
-
-    await sleep(500);
-  }
-
-  return utxos;
 };
 
 export const getBTCUTXOs = async (network: Network, address: string) => {
@@ -320,7 +266,7 @@ export const getAddressInscriptions = async (
     `unisat:address:inscription:${address}`,
     JSON.stringify(array),
     "EX",
-    60 * 1,
+    60 * 2,
     "NX",
   );
 
