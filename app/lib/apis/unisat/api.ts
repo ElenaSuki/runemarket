@@ -13,7 +13,7 @@ import {
 } from "./type";
 
 const API_KEY =
-  "e9917a0a1c8d959edd453c76d743aa10adf64c87d1ea06790c7b9fe430de75f7";
+  "59847a3e55dce7fe73c80877ae2b2bc5e9eb2e797de9e5c4f6d602dc996cf706";
 
 const BaseUrl = (network: Network) =>
   network === networks.testnet
