@@ -5,6 +5,7 @@ import { z } from "zod";
 import { checkUTXOBalance, getInscriptionInfo } from "@/lib/apis/unisat/api";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import RedisInstance from "@/lib/server/redis.server";
+import { sleep } from "@/lib/utils";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
@@ -81,6 +82,8 @@ export const action: ActionFunction = async ({ request }) => {
           continue;
         }
 
+        await sleep(400);
+
         const inscriptionValidateResult = await getInscriptionInfo(
           networks.bitcoin,
           offer.inscription_id,
@@ -107,8 +110,11 @@ export const action: ActionFunction = async ({ request }) => {
         );
 
         validOfferIds.push(offer.id);
+
+        await sleep(400);
       } catch (e) {
-        continue;
+        console.log(e);
+        return json(errorResponse(30015));
       }
     }
 
