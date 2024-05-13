@@ -155,7 +155,7 @@ const BuyModal: React.FC<{
               tx: parseInt(offer.runeId.split(":")[1]),
             },
             output: 1,
-            amount: 1n,
+            amount: 0n,
           },
         ],
       });
