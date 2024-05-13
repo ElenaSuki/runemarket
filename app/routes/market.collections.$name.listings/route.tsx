@@ -66,9 +66,9 @@ export default function MarketCollectionListingsPage() {
 
   const sort = searchParams.get("sort") || "price_asc";
 
-  const deleteInvalidOffers = async (invalidLocations: string[]) => {
+  const deleteInvalidOffers = async (invalidIds: number[]) => {
     await AxiosInstance.post("/api/offer/delete", {
-      locations: invalidLocations,
+      ids: invalidIds,
     });
     refreshOffers();
   };
@@ -324,8 +324,8 @@ export default function MarketCollectionListingsPage() {
       </div>
       <BuyModal
         offer={selectedOffer}
-        onClose={(invalidLocation) => {
-          deleteInvalidOffers([invalidLocation]);
+        onClose={(invalidIds) => {
+          deleteInvalidOffers(invalidIds);
           setSelectedOffer(undefined);
         }}
         onSuccess={(payload) => {

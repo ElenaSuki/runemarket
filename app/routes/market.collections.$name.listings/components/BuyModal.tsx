@@ -3,7 +3,6 @@ import { Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { pushTx } from "@/lib/apis/mempool";
-import { checkUTXOBalance, getInscriptionInfo } from "@/lib/apis/unisat/api";
 import AxiosInstance from "@/lib/axios";
 import { useBTCPrice } from "@/lib/hooks/useBTCPrice";
 import { useSafeUTXOs } from "@/lib/hooks/useSafeUTXOs";
@@ -29,7 +28,7 @@ import { useWallet } from "@/components/Wallet/hooks";
 
 const BuyModal: React.FC<{
   offer?: RuneOfferType;
-  onClose: (invalidLocation: string) => void;
+  onClose: (invalidIds: number[]) => void;
   onSuccess: (payload: {
     txId: string;
     price: string;
@@ -43,20 +42,20 @@ const BuyModal: React.FC<{
   const { splitUTXOs } = useSplitUTXO();
 
   const [checking, setChecking] = useState(false);
-  const [invalidOfferLocation, setInvalidOfferLocation] = useState<string>("");
+  const [invalidOfferIds, setInvalidOfferIds] = useState<number[]>([]);
   const [feeRate, setFeeRate] = useState(0);
   const [receiver, setReceiver] = useState("");
   const [customReceiver, setCustomReceiver] = useState(false);
 
   const totalPrice = useMemo(() => {
-    if (!offer || invalidOfferLocation) return 0;
+    if (!offer || invalidOfferIds.length > 0) return 0;
 
     return parseInt(offer.totalPrice);
-  }, [offer, invalidOfferLocation]);
+  }, [offer, invalidOfferIds]);
 
   const handleBuy = async () => {
     try {
-      if (!offer || invalidOfferLocation) {
+      if (!offer || invalidOfferIds.length > 0) {
         throw new Error("No valid offer");
       }
 
@@ -119,7 +118,7 @@ const BuyModal: React.FC<{
       });
 
       if (offerPsbt.txInputs.length > 2 || offerPsbt.txOutputs.length > 2) {
-        setInvalidOfferLocation(`${offer.txid}:${offer.vout}`);
+        setInvalidOfferIds([offer.id]);
         return;
       }
 
@@ -129,7 +128,7 @@ const BuyModal: React.FC<{
         const txOutput = offerPsbt.txOutputs[i];
 
         if (!witnessUTXO) {
-          setInvalidOfferLocation(`${offer.txid}:${offer.vout}`);
+          setInvalidOfferIds([offer.id]);
           return;
         }
 
@@ -291,7 +290,7 @@ const BuyModal: React.FC<{
         }
       }
 
-      onClose(invalidOfferLocation);
+      onClose(invalidOfferIds);
       onSuccess({
         txId: data.data.txid,
         price: totalPrice.toString(),
@@ -310,9 +309,9 @@ const BuyModal: React.FC<{
   };
 
   const handleClose = () => {
-    const invalidOffers = invalidOfferLocation;
+    const invalidOffers = invalidOfferIds;
     setChecking(false);
-    setInvalidOfferLocation("");
+    setInvalidOfferIds([]);
     setFeeRate(0);
     setReceiver("");
     setCustomReceiver(false);
@@ -325,40 +324,20 @@ const BuyModal: React.FC<{
 
       if (!offer) return;
 
-      const result = await checkUTXOBalance(
-        isTestnetAddress(offer.lister) ? networks.testnet : networks.bitcoin,
-        offer.txid,
-        offer.vout,
-      );
+      const { data } = await AxiosInstance.post<{
+        code: number;
+        error: boolean;
+        data: number[];
+      }>("/api/offer/check", {
+        ids: [offer.id],
+      });
 
-      if (result.length !== 1) {
-        setInvalidOfferLocation(`${offer.txid}:${offer.vout}`);
-        return;
+      if (data.error) {
+        throw new Error(data.code.toString());
       }
 
-      if (result[0].runeId !== offer.runeId) {
-        setInvalidOfferLocation(`${offer.txid}:${offer.vout}`);
-        return;
-      }
-
-      const amount =
-        BigInt(result[0].amount) / 10n ** BigInt(result[0].divisibility);
-
-      if (parseInt(amount.toString()) !== offer.amount) {
-        setInvalidOfferLocation(`${offer.txid}:${offer.vout}`);
-        return;
-      }
-
-      const inscription = await getInscriptionInfo(
-        isTestnetAddress(offer.lister) ? networks.testnet : networks.bitcoin,
-        offer.inscriptionId,
-      );
-
-      if (
-        inscription.utxo.txid !== offer.inscriptionTxid &&
-        inscription.utxo.vout !== offer.inscriptionVout
-      ) {
-        setInvalidOfferLocation(`${offer.txid}:${offer.vout}`);
+      if (!data.data.includes(offer.id)) {
+        setInvalidOfferIds([offer.id]);
         return;
       }
     } catch (e) {
@@ -380,10 +359,10 @@ const BuyModal: React.FC<{
   }, [offer]);
 
   useEffect(() => {
-    if (account && !customReceiver) {
+    if (offer && account && !customReceiver) {
       setReceiver(account.ordinals.address);
     }
-  }, [account, customReceiver]);
+  }, [account, customReceiver, offer]);
 
   if (!offer) return null;
 
@@ -472,9 +451,15 @@ const BuyModal: React.FC<{
         <div className="flex w-full justify-end">
           <Button
             onClick={handleBuy}
-            disabled={!offer || checking || invalidOfferLocation.length > 0}
+            disabled={!offer || checking || invalidOfferIds.length > 0}
           >
-            {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy"}
+            {checking ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : invalidOfferIds.length > 0 ? (
+              "Invalid Offer"
+            ) : (
+              "Buy"
+            )}
           </Button>
         </div>
       </DialogContent>
