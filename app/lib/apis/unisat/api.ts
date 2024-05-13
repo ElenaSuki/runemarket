@@ -3,10 +3,8 @@ import { Network, networks } from "bitcoinjs-lib";
 
 import RedisInstance from "@/lib/server/redis.server";
 import { AddressRuneAsset } from "@/lib/types/rune";
-import { sleep } from "@/lib/utils";
 
 import {
-  AddressRunesBalanceReq,
   AddressRunesUTXOReq,
   RunesInfoReq,
   UnisatInscriptionInfoType,
@@ -107,37 +105,6 @@ export const getAddressRuneUTXOs = async (
     60 * 1,
     "NX",
   );
-
-  return array;
-};
-
-export const getAddressRuneBalanceList = async (
-  network: Network,
-  address: string,
-) => {
-  const resp = await AxiosInstance.get<{
-    code: number;
-    message: string;
-    data: {
-      start: number;
-      total: number;
-      detail: AddressRunesBalanceReq[];
-    };
-  }>(`${BaseUrl(network)}/v1/indexer/address/${address}/runes/balance-list`, {
-    params: {
-      start: 0,
-      limit: 500,
-    },
-  });
-
-  const array = resp.data.data.detail.map((rune) => ({
-    runeId: rune.runeid,
-    rune: rune.rune,
-    symbol: rune.symbol,
-    spacedRune: rune.spacedRune,
-    amount: (BigInt(rune.amount) / 10n ** BigInt(rune.divisibility)).toString(),
-    divisibility: rune.divisibility,
-  }));
 
   return array;
 };
