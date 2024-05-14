@@ -32,7 +32,7 @@ export const pushTransaction = async (network: Network, txHex: string) => {
   });
 
   if (!resp.data.success) {
-    throw new Error(resp.data.response);
+    throw new Error(resp.data.message);
   }
 
   return resp.data.response;
