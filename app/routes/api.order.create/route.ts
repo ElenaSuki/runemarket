@@ -117,6 +117,8 @@ export const action: ActionFunction = async ({ request }) => {
           rawTx,
         );
       } catch (e) {
+        console.log(e);
+
         const message = formatError(e);
 
         if (message === "bad-txns-inputs-missingorspent") {
@@ -130,9 +132,9 @@ export const action: ActionFunction = async ({ request }) => {
               status: 2,
             },
           });
-
-          return json(errorResponse(30016));
         }
+
+        return json(errorResponse(30016));
       }
 
       await DatabaseInstance.$transaction(async () => {
