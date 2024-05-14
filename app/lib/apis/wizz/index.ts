@@ -24,10 +24,16 @@ export const getAddressUTXOs = async (network: Network, scriptHash: string) => {
 
 export const pushTransaction = async (network: Network, txHex: string) => {
   const resp = await axios.post<{
+    success: boolean;
     response: string;
+    message: string;
   }>(`https://ep.wizz.cash/proxy/blockchain.transaction.broadcast`, {
     params: [txHex],
   });
+
+  if (!resp.data.success) {
+    throw new Error(resp.data.response);
+  }
 
   return resp.data.response;
 };

@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { Network, networks } from "bitcoinjs-lib";
 
 import AxiosInstance from "@/lib/axios";
@@ -194,6 +195,7 @@ export const pushTx = async (network: Network, rawTx: string) => {
 
   const tryWizz = async () => {
     const txid = await pushTransaction(network, rawTx);
+
     return txid;
   };
 
@@ -205,6 +207,20 @@ export const pushTx = async (network: Network, rawTx: string) => {
       return txId;
     } catch (e) {
       console.log(e);
+      if (isAxiosError(e)) {
+        if (
+          e.response?.data &&
+          typeof e.response.data === "string" &&
+          e.response.data.startsWith("sendrawtransaction RPC error")
+        ) {
+          const failInfo = JSON.parse(
+            e.response.data.slice("sendrawtransaction RPC error: ".length),
+          );
+          if (failInfo && failInfo.code && failInfo.message) {
+            throw new Error(failInfo.message);
+          }
+        }
+      }
     }
   }
 

@@ -40,4 +40,5 @@ const ErrorMap = {
   "30013": "Rune not found",
   "30014": "Inscription not match",
   "30015": "Check offer failed, please try again",
+  "30016": "Some offer inputs have been spent",
 };
