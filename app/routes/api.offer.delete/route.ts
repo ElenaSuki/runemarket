@@ -6,7 +6,7 @@ import DatabaseInstance from "@/lib/server/prisma.server";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
-  locations: z.array(z.string()).min(1),
+  ids: z.array(z.number().int().min(0)).min(1),
 });
 
 type RequestSchemaType = z.infer<typeof RequestSchema>;
@@ -21,14 +21,11 @@ export const action: ActionFunction = async ({ request }) => {
       return json(errorResponse(10001));
     }
 
-    for (const location of data.locations) {
-      const [txid, vout] = location.split(":");
-
+    for (const id of data.ids) {
       try {
         await DatabaseInstance.offers.updateMany({
           where: {
-            location_txid: txid,
-            location_vout: parseInt(vout),
+            id,
           },
           data: {
             status: 2,

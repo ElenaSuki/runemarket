@@ -4,13 +4,11 @@ import dayjs from "dayjs";
 import { z } from "zod";
 
 import { pushTx } from "@/lib/apis/mempool";
-import { checkUTXOBalance, getInscriptionInfo } from "@/lib/apis/unisat/api";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import RedisInstance from "@/lib/server/redis.server";
-import { sleep } from "@/lib/utils";
 import { isTestnetAddress, reverseBuffer } from "@/lib/utils/address-helpers";
 import { validateInputSignature } from "@/lib/utils/bitcoin-utils";
-import { errorResponse } from "@/lib/utils/error-helpers";
+import { errorResponse, formatError } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
   psbt: z.string().min(1),
@@ -63,69 +61,6 @@ export const action: ActionFunction = async ({ request }) => {
 
     const isCollection = offers.some((offer) => offer.inscription_id);
 
-    const chunk: {
-      txid: string;
-      vout: number;
-    }[][] = [];
-
-    for (let i = 0; i < offers.length; i += 5) {
-      chunk.push(
-        offers.slice(i, i + 5).map((offer) => ({
-          txid: offer.location_txid,
-          vout: offer.location_vout,
-        })),
-      );
-    }
-
-    for (const locationArray of chunk) {
-      await sleep(500);
-      const result = await Promise.all(
-        locationArray.map((location) =>
-          checkUTXOBalance(
-            isTestnetAddress(data.buyer) ? networks.testnet : networks.bitcoin,
-            location.txid,
-            location.vout,
-          ),
-        ),
-      );
-
-      try {
-        result.forEach((rune, index) => {
-          if (rune.length !== 1) {
-            throw new Error("Invalid rune count");
-          }
-
-          if (rune[0].runeId !== offers[index].rune_id) {
-            throw new Error("Rune id not match");
-          }
-
-          const amount =
-            BigInt(rune[0].amount) / 10n ** BigInt(rune[0].divisibility);
-
-          if (parseInt(amount.toString()) !== offers[index].amount) {
-            throw new Error("Rune amount not match");
-          }
-        });
-      } catch (e) {
-        console.log(e);
-        return json(errorResponse(30009));
-      }
-    }
-
-    if (isCollection) {
-      const inscription = await getInscriptionInfo(
-        isTestnetAddress(data.buyer) ? networks.testnet : networks.bitcoin,
-        offers[0].inscription_id!,
-      );
-
-      if (
-        inscription.utxo.txid !== offers[0].inscription_txid ||
-        inscription.utxo.vout !== offers[0].inscription_vout
-      ) {
-        return json(errorResponse(30014));
-      }
-    }
-
     for (let i = 0; i < offers.length; i++) {
       try {
         const txInput = psbt.txInputs[i + 1];
@@ -145,25 +80,6 @@ export const action: ActionFunction = async ({ request }) => {
         }
 
         const offerPsbt = Psbt.fromHex(offer.psbt);
-
-        if (offer.inscription_id) {
-          const inscription = await getInscriptionInfo(
-            isTestnetAddress(data.buyer) ? networks.testnet : networks.bitcoin,
-            offer.inscription_id,
-          );
-
-          const txid = reverseBuffer(offerPsbt.txInputs[0].hash).toString(
-            "hex",
-          );
-          const index = offerPsbt.txInputs[0].index;
-
-          if (
-            inscription.utxo.txid !== txid ||
-            inscription.utxo.vout !== index
-          ) {
-            return json(errorResponse(30014));
-          }
-        }
 
         for (let j = 0; j < offerPsbt.data.inputs.length; j++) {
           if (
@@ -195,10 +111,31 @@ export const action: ActionFunction = async ({ request }) => {
     const rawTx = tx.toHex();
 
     try {
-      await pushTx(
-        isTestnetAddress(data.buyer) ? networks.testnet : networks.bitcoin,
-        rawTx,
-      );
+      try {
+        await pushTx(
+          isTestnetAddress(data.buyer) ? networks.testnet : networks.bitcoin,
+          rawTx,
+        );
+      } catch (e) {
+        console.log(e);
+
+        const message = formatError(e);
+
+        if (message === "bad-txns-inputs-missingorspent") {
+          await DatabaseInstance.offers.updateMany({
+            where: {
+              id: {
+                in: data.offer_ids,
+              },
+            },
+            data: {
+              status: 2,
+            },
+          });
+        }
+
+        return json(errorResponse(30016));
+      }
 
       await DatabaseInstance.$transaction(async () => {
         await Promise.all(

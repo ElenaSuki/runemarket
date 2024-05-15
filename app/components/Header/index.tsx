@@ -45,7 +45,7 @@ const Header: React.FC = () => {
             onClick={() => nagigate("/")}
           >
             <img
-              className="h-10"
+              className="h-7 sm:h-10"
               src="/icons/logo.svg"
               alt="runebunlder"
             />
@@ -55,7 +55,7 @@ const Header: React.FC = () => {
           <a
             href="https://twitter.com/runebundler"
             target="_blank"
-            className="h-6 w-6 opacity-100 transition-opacity hover:opacity-75"
+            className="h-4 w-4 opacity-100 transition-opacity hover:opacity-75 sm:h-6 sm:w-6"
           >
             <img
               src="/icons/twitter.svg"
@@ -65,7 +65,7 @@ const Header: React.FC = () => {
           <a
             href="https://t.me/runebundler"
             target="_blank"
-            className="h-6 w-6 opacity-100 transition-opacity hover:opacity-75"
+            className="h-4 w-4 opacity-100 transition-opacity hover:opacity-75 sm:h-6 sm:w-6"
           >
             <img
               src="/icons/telegram.svg"
@@ -73,7 +73,7 @@ const Header: React.FC = () => {
             />
           </a>
           <div className="flex items-center space-x-1">
-            <Fuel className="h-5 w-5" />
+            <Fuel className="h-4 w-4 sm:h-5 sm:w-5" />
             <div className="text-nowrap text-sm">{avgGasFee} sat / vB</div>
           </div>
           {!account && !isMobile && (

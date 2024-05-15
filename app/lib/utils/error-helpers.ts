@@ -39,4 +39,6 @@ const ErrorMap = {
   "30012": "Address balance not found this rune",
   "30013": "Rune not found",
   "30014": "Inscription not match",
+  "30015": "Check offer failed, please try again",
+  "30016": "Invalid transaction",
 };
