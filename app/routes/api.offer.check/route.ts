@@ -2,7 +2,7 @@ import { ActionFunction, json } from "@remix-run/node";
 import { networks } from "bitcoinjs-lib";
 import { z } from "zod";
 
-import { checkUTXOBalance, getInscriptionInfo } from "@/lib/apis/unisat/api";
+import { getTransactionOutspent } from "@/lib/apis/blockstream";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import RedisInstance from "@/lib/server/redis.server";
 import { sleep } from "@/lib/utils";
@@ -58,19 +58,13 @@ export const action: ActionFunction = async ({ request }) => {
           continue;
         }
 
-        const runeValidateResult = await checkUTXOBalance(
+        const runeSpent = await getTransactionOutspent(
           networks.bitcoin,
           offer.location_txid,
           offer.location_vout,
         );
 
-        if (!runeValidateResult || runeValidateResult.length === 0) {
-          continue;
-        }
-
-        const rune = runeValidateResult[0];
-
-        if (rune.runeId !== offer.rune_id) {
+        if (runeSpent) {
           continue;
         }
 
@@ -82,24 +76,19 @@ export const action: ActionFunction = async ({ request }) => {
           continue;
         }
 
-        await sleep(400);
+        await sleep(100);
 
-        const inscriptionValidateResult = await getInscriptionInfo(
+        const inscriptionSpent = await getTransactionOutspent(
           networks.bitcoin,
-          offer.inscription_id,
+          offer.inscription_txid,
+          offer.inscription_vout,
         );
 
-        if (!inscriptionValidateResult || !inscriptionValidateResult.utxo) {
+        if (inscriptionSpent) {
           continue;
         }
 
-        if (
-          inscriptionValidateResult.address !== offer.lister ||
-          inscriptionValidateResult.utxo.txid !== offer.inscription_txid ||
-          inscriptionValidateResult.utxo.vout !== offer.inscription_vout
-        ) {
-          continue;
-        }
+        await sleep(100);
 
         await RedisInstance.set(
           `offer:${offer.id}:valid`,
@@ -110,8 +99,6 @@ export const action: ActionFunction = async ({ request }) => {
         );
 
         validOfferIds.push(offer.id);
-
-        await sleep(400);
       } catch (e) {
         console.log(e);
         return json(errorResponse(30015));

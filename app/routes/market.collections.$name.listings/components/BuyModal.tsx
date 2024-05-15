@@ -97,19 +97,10 @@ const BuyModal: React.FC<{
         feeRate,
       );
 
-      targets.push(
-        {
-          script: account.payment.script,
-          value: paddingUTXOs.reduce((acc, utxo) => acc + utxo.value, 0),
-        },
-        {
-          script: toOutputScript(
-            receiver,
-            isTestnetAddress(receiver) ? networks.testnet : networks.bitcoin,
-          ),
-          value: 546,
-        },
-      );
+      targets.push({
+        script: account.payment.script,
+        value: paddingUTXOs.reduce((acc, utxo) => acc + utxo.value, 0),
+      });
 
       const offerPsbt = Psbt.fromHex(offer.unsignedPsbt, {
         network: isTestnetAddress(offer.lister)
@@ -140,6 +131,16 @@ const BuyModal: React.FC<{
             value: witnessUTXO.value,
           },
         });
+
+        if (i === 0) {
+          targets.push({
+            script: toOutputScript(
+              receiver,
+              isTestnetAddress(receiver) ? networks.testnet : networks.bitcoin,
+            ),
+            value: witnessUTXO.value,
+          });
+        }
 
         targets.push({
           script: txOutput.script,
@@ -251,11 +252,8 @@ const BuyModal: React.FC<{
 
       const signedPsbt = Psbt.fromHex(signedPsbtHex);
       const lastVout = signedPsbt.txOutputs[signedPsbt.txOutputs.length - 1];
-      const lastVoutAddress = detectScriptToAddressType(
-        lastVout.script.toString("hex"),
-      );
 
-      if (lastVout.value > 546 && lastVoutAddress === account.payment.address) {
+      if (lastVout.value > 546) {
         const storeUTXOs = window.localStorage.getItem(
           `${account.payment.address}-utxos`,
         );
