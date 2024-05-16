@@ -41,4 +41,5 @@ const ErrorMap = {
   "30014": "Inscription not match",
   "30015": "Check offer failed, please try again",
   "30016": "Invalid transaction",
+  "30017": "Some inputs not match offer location",
 };

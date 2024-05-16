@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { pushTx } from "@/lib/apis/mempool";
 import AxiosInstance from "@/lib/axios";
+import { SERVICE_FEE_ADDRESS } from "@/lib/config";
 import { useBTCPrice } from "@/lib/hooks/useBTCPrice";
 import { useSafeUTXOs } from "@/lib/hooks/useSafeUTXOs";
 import { useSplitUTXO } from "@/lib/hooks/useSplitUTXO";
@@ -11,7 +12,6 @@ import { useToast } from "@/lib/hooks/useToast";
 import { RuneOfferType } from "@/lib/types/market";
 import { cn, formatNumber, satsToBTC } from "@/lib/utils";
 import {
-  detectScriptToAddressType,
   getInputExtra,
   isTestnetAddress,
   reverseBuffer,
@@ -32,7 +32,7 @@ const BuyModal: React.FC<{
   onSuccess: (payload: {
     txId: string;
     price: string;
-    inscriptionId: string;
+    inscriptionIds: string[];
   }) => void;
 }> = ({ offer, onClose, onSuccess }) => {
   const { BTCPrice } = useBTCPrice();
@@ -52,6 +52,10 @@ const BuyModal: React.FC<{
 
     return parseInt(offer.totalPrice);
   }, [offer, invalidOfferIds]);
+
+  const serviceFee = useMemo(() => {
+    return Math.floor(totalPrice / 100);
+  }, [totalPrice]);
 
   const handleBuy = async () => {
     try {
@@ -147,6 +151,11 @@ const BuyModal: React.FC<{
           value: txOutput.value,
         });
       }
+
+      targets.push({
+        script: toOutputScript(SERVICE_FEE_ADDRESS),
+        value: serviceFee,
+      });
 
       const opReturnCode = encodeOpReturn({
         edicts: [
@@ -292,7 +301,7 @@ const BuyModal: React.FC<{
       onSuccess({
         txId: data.data.txid,
         price: totalPrice.toString(),
-        inscriptionId: offer?.inscriptionId,
+        inscriptionIds: [offer.inscriptionId],
       });
     } catch (e) {
       toast({
@@ -418,8 +427,8 @@ const BuyModal: React.FC<{
         </div>
         <div className="space-y-2">
           <div className="flex w-full items-center justify-between space-x-2">
-            <div className="text-sm">Service Fee</div>
-            <div className="text-sm">0</div>
+            <div className="text-sm">Service Fee (1%)</div>
+            <div className="text-sm">{serviceFee} sats</div>
           </div>
           <div className="flex w-full items-center justify-between space-x-2">
             <div className="text-sm">Total Price</div>

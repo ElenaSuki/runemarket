@@ -1,6 +1,6 @@
 import { useParams } from "@remix-run/react";
 import { useDebounce } from "@uidotdev/usehooks";
-import { Loader2, X } from "lucide-react";
+import { Loader2, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import AxiosInstance from "@/lib/axios";
@@ -29,6 +29,7 @@ import {
   useFetchAddressBalance,
   useStoreRuneAssets,
 } from "../assets.$address/hooks/useFetchAddressBalance";
+import BulkBuyModal from "./components/BulkBuyModal";
 import BuyModal from "./components/BuyModal";
 import BuySuccessModal from "./components/BuySuccessModal";
 import EditModal from "./components/EditModal";
@@ -47,11 +48,15 @@ export default function MarketCollectionListingsPage() {
   const [successPayload, setSuccessPayload] = useState<{
     txId: string;
     price: string;
-    inscriptionId: string;
+    inscriptionIds: string[];
   }>();
   const [selectedOffer, setSelectedOffer] = useState<RuneOfferType>();
   const [editOffer, setEditOffer] = useState<RuneOfferType>();
   const [filters, setFilters] = useState("");
+  const [selectedOffersMap, setSelectedOffersMap] = useState<
+    Map<string, RuneOfferType>
+  >(new Map());
+  const [bulkBuyModalOpen, setBulkBuyModalOpen] = useState(false);
 
   const debouncedFilters = useDebounce(filters, 600);
 
@@ -73,6 +78,31 @@ export default function MarketCollectionListingsPage() {
     refreshOffers();
   };
 
+  const toggleSelectedOffer = (offer: RuneOfferType) => {
+    const exists = selectedOffersMap.get(offer.id.toString());
+
+    if (exists) {
+      const newMap = new Map(selectedOffersMap);
+      newMap.delete(offer.id.toString());
+      setSelectedOffersMap(newMap);
+    } else {
+      const newMap = new Map(selectedOffersMap);
+
+      const totalCount = selectedOffersMap.size;
+
+      if (totalCount >= 8) {
+        toast({
+          duration: 3000,
+          title: "You can only buy max 8 items in one transaction",
+        });
+        return;
+      }
+
+      newMap.set(offer.id.toString(), offer);
+      setSelectedOffersMap(newMap);
+    }
+  };
+
   const sameCollections = useMemo(() => {
     if (!runes) return [];
     return runes.filter(
@@ -82,6 +112,10 @@ export default function MarketCollectionListingsPage() {
         rune.type === "nft",
     );
   }, [runes]);
+
+  const selectedOffers = useMemo(() => {
+    return Array.from(selectedOffersMap.values());
+  }, [selectedOffersMap]);
 
   useEffect(() => {
     updateSearchParams(
@@ -294,12 +328,34 @@ export default function MarketCollectionListingsPage() {
                           Edit
                         </Button>
                       ) : (
-                        <Button
-                          onClick={() => setSelectedOffer(offer)}
-                          className="w-full border bg-secondary transition-colors hover:opacity-100 group-hover:border-transparent group-hover:bg-theme"
-                        >
-                          Buy
-                        </Button>
+                        <div className="flex items-center space-x-4">
+                          <Button
+                            onClick={() => setSelectedOffer(offer)}
+                            className="w-full border bg-secondary transition-colors hover:border-transparent hover:bg-theme hover:opacity-100"
+                          >
+                            Buy
+                          </Button>
+                          <Button
+                            onClick={() => toggleSelectedOffer(offer)}
+                            className={cn(
+                              "w-10 shrink-0 border p-3 transition-colors hover:border-transparent hover:bg-theme hover:opacity-100",
+                              {
+                                "bg-secondary": !selectedOffersMap.get(
+                                  offer.id.toString(),
+                                ),
+                                "bg-red-400/30": selectedOffersMap.get(
+                                  offer.id.toString(),
+                                ),
+                              },
+                            )}
+                          >
+                            {selectedOffersMap.get(offer.id.toString()) ? (
+                              <Trash2 className="h-full w-full" />
+                            ) : (
+                              <ShoppingCart className="h-full w-full" />
+                            )}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -333,6 +389,21 @@ export default function MarketCollectionListingsPage() {
           setSuccessPayload(payload);
         }}
       />
+      <BulkBuyModal
+        open={bulkBuyModalOpen}
+        setOpen={setBulkBuyModalOpen}
+        offers={selectedOffers}
+        onClose={(invalidIds) => {
+          setBulkBuyModalOpen(false);
+          deleteInvalidOffers(invalidIds);
+        }}
+        onSuccess={(payload) => {
+          refreshOffers();
+          setBulkBuyModalOpen(false);
+          setSelectedOffersMap(new Map());
+          setSuccessPayload(payload);
+        }}
+      />
       <BuySuccessModal
         payload={successPayload}
         onClose={() => {
@@ -348,6 +419,23 @@ export default function MarketCollectionListingsPage() {
           setEditOffer(undefined);
         }}
       />
+      {selectedOffers.length > 0 && (
+        <>
+          <Button
+            onClick={() => setSelectedOffersMap(new Map())}
+            className="fixed bottom-20 left-5 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-theme p-3"
+          >
+            <Trash2 className="h-full w-full" />
+          </Button>
+          <Button
+            onClick={() => setBulkBuyModalOpen(true)}
+            className="fixed bottom-5 left-5 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-theme p-3"
+          >
+            <div className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-red-500"></div>
+            <ShoppingCart className="h-full w-full" />
+          </Button>
+        </>
+      )}
       {action === "list" && (
         <ListModal
           onSuccess={() => {
@@ -377,9 +465,14 @@ const Skeleton = () => {
           </div>
           <div className="text-sm text-secondary">$ -</div>
         </div>
-        <Button className="w-full border bg-secondary transition-colors hover:opacity-100 group-hover:border-transparent group-hover:bg-theme">
-          Buy
-        </Button>
+        <div className="flex items-center space-x-4">
+          <Button className="w-full border bg-secondary transition-colors hover:border-transparent hover:bg-theme hover:opacity-100">
+            Buy
+          </Button>
+          <Button className="w-10 shrink-0 border bg-secondary p-3 transition-colors hover:border-transparent hover:bg-theme hover:opacity-100">
+            <ShoppingCart className="h-full w-full" />
+          </Button>
+        </div>
       </div>
     </div>
   );

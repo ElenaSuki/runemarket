@@ -9,22 +9,27 @@ import { estimateTxVbytes } from "../utils/bitcoin-utils";
 export const useSplitUTXO = () => {
   const { account, connector } = useWallet();
 
-  const splitUTXOs = async (utxos: UTXO[], feeRate: number) => {
+  const splitUTXOs = async (utxos: UTXO[], feeRate: number, count?: number) => {
     if (!account || !connector) {
       throw new Error("Wallet not connected");
     }
 
     const sortedUTXOs = utxos.sort((a, b) => a.value - b.value);
 
+    const baseCount = count ? count : 2;
+
     if (
-      sortedUTXOs.length > 2 &&
+      sortedUTXOs.length > baseCount &&
       sortedUTXOs[0].value <= 1000 &&
       sortedUTXOs[1].value <= 1000
     ) {
-      return {
-        paddingUTXOs: sortedUTXOs.slice(0, 2),
-        feeUTXOs: sortedUTXOs.slice(2),
-      };
+      const splitUTXOs = sortedUTXOs.slice(0, baseCount);
+      if (splitUTXOs.every((utxo) => utxo.value <= 1000)) {
+        return {
+          paddingUTXOs: splitUTXOs,
+          feeUTXOs: sortedUTXOs.slice(baseCount),
+        };
+      }
     }
 
     const paddingUnitValue = 600;
@@ -88,14 +93,14 @@ export const useSplitUTXO = () => {
     }));
 
     return {
-      paddingUTXOs: createdUTXOs.slice(0, 2),
+      paddingUTXOs: createdUTXOs.slice(0, baseCount),
       feeUTXOs: [
         ...utxos.filter(
           (utxo) =>
             utxo.txid !== consumedUTXO?.txid ||
             utxo.vout !== consumedUTXO?.vout,
         ),
-        ...createdUTXOs.slice(2),
+        ...createdUTXOs.slice(baseCount),
       ],
       splitPsbtHex: signedPsbtHex,
     };

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader } from "@/components/Dialog";
 
 const BuySuccessModal: React.FC<{
   payload?: {
-    inscriptionId: string;
+    inscriptionIds: string[];
     txId: string;
     price: string;
   };
@@ -27,37 +27,39 @@ const BuySuccessModal: React.FC<{
       <DialogContent>
         <DialogHeader>{`Buy Success`}</DialogHeader>
         <div className="space-y-6">
-          <div className="flex items-center justify-center rounded-lg bg-primary p-4">
-            <div className="relative aspect-square w-52 overflow-hidden rounded-lg bg-secondary">
-              {payload?.inscriptionId && (
+          <div className="grid max-h-[200px] grid-cols-3 gap-4 overflow-y-scroll rounded-lg bg-primary p-4">
+            {payload?.inscriptionIds.map((inscriptionId) => (
+              <div className="aspect-square w-full overflow-hidden rounded-lg bg-secondary">
                 <img
                   className="h-full w-full"
-                  src={`https://ordinals.com/content/${payload?.inscriptionId}`}
-                  alt=""
+                  src={`https://ordinals.com/content/${inscriptionId}`}
+                  alt={inscriptionId}
                 />
-              )}
-
-              <div className="absolute bottom-0 left-0 right-0 flex h-8 items-center justify-between bg-black/60 px-2">
-                <div className="flex items-center space-x-2">
-                  <img
-                    className="h-4 w-4"
-                    src="/icons/btc.svg"
-                    alt="BTC"
-                  />
-                  <div className="text-sm text-white">
-                    {satsToBTC(parseFloat(payload?.price || "0"))}
-                  </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between space-x-4 rounded-lg bg-primary p-4 text-sm">
+            <div>Total Price</div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <img
+                  className="h-4 w-4"
+                  src="/icons/btc.svg"
+                  alt="BTC"
+                />
+                <div className="text-sm text-white">
+                  {satsToBTC(parseFloat(payload?.price || "0"))}
                 </div>
-                <div className="text-sm text-secondary">
-                  {BTCPrice
-                    ? `$ ${formatNumber(parseFloat(satsToBTC(parseFloat(payload?.price || "0"))) * BTCPrice)}`
-                    : "$ -"}
-                </div>
+              </div>
+              <div className="text-sm text-secondary">
+                {BTCPrice
+                  ? `$ ${formatNumber(parseFloat(satsToBTC(parseFloat(payload?.price || "0"))) * BTCPrice)}`
+                  : "$ -"}
               </div>
             </div>
           </div>
           <div className="flex items-center space-x-4 rounded-lg bg-primary p-4 text-sm">
-            <div>TX:</div>
+            <div>TX</div>
             <a
               className="text-secondary transition-colors hover:text-theme"
               href={`https://mempool.space/zh/tx/${payload?.txId}`}
