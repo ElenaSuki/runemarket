@@ -214,7 +214,7 @@ const RuneBalance: React.FC<{
                       <img
                         loading="lazy"
                         className="h-full w-full"
-                        src={`https://ordinals.com/content/${item.inscription?.inscriptionId}`}
+                        src={`https://ordin.s3.amazonaws.com/inscriptions/${item.inscription?.inscriptionId}`}
                         alt={item.spacedRune}
                       />
                       {item.listed && address === account?.ordinals.address && (

@@ -170,7 +170,7 @@ const ListModal: React.FC<{
                   <div className="relative aspect-square w-16 overflow-hidden rounded-lg bg-secondary">
                     <img
                       className="h-full w-full"
-                      src={`https://ordinals.com/content/${rune.inscription?.inscriptionId}`}
+                      src={`https://ordin.s3.amazonaws.com/inscriptions/${rune.inscription?.inscriptionId}`}
                       alt={rune.spacedRune}
                     />
                   </div>
@@ -189,7 +189,7 @@ const ListModal: React.FC<{
               <div className="relative aspect-square w-48 overflow-hidden rounded-lg bg-secondary">
                 <img
                   className="h-full w-full"
-                  src={`https://ordinals.com/content/${runeItem?.inscription?.inscriptionId}`}
+                  src={`https://ordin.s3.amazonaws.com/inscriptions/${runeItem?.inscription?.inscriptionId}`}
                   alt={runeItem?.spacedRune}
                 />
                 <div className="absolute right-2 top-2 rounded-md bg-theme px-2 py-1 text-xs text-white">

@@ -168,7 +168,7 @@ const OrdersTable: React.FC<{
                   <TableCell className="min-w-[100px]">
                     <Avatar className="h-12 w-12 rounded-md">
                       <AvatarImage
-                        src={`https://ordinals.com/content/${item.inscription_id}`}
+                        src={`https://ordin.s3.amazonaws.com/inscriptions/${item.inscription_id}`}
                         alt={item.rune_spaced_name}
                       />
                       <AvatarFallback className="rounded-md bg-secondary">

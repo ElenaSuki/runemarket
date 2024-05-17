@@ -125,7 +125,7 @@ export default function RunePage() {
         <div className="aspect-square w-20 shrink-0 rounded-lg bg-secondary">
           <Avatar className="h-full w-full rounded-lg">
             <AvatarImage
-              src={`https://ordinals.com/content/${data.rune.etching}i0`}
+              src={`https://ordin.s3.amazonaws.com/inscriptions/${data.rune.etching}i0`}
             />
             <AvatarFallback>{data.rune.symbol}</AvatarFallback>
           </Avatar>

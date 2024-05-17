@@ -526,7 +526,7 @@ const BulkBuyModal: React.FC<{
                     {offer.inscriptionId && (
                       <img
                         className="h-12 w-12 rounded-lg"
-                        src={`https://ordinals.com/content/${offer.inscriptionId}`}
+                        src={`https://ordin.s3.amazonaws.com/inscriptions/${offer.inscriptionId}`}
                         alt={offer.spacedName}
                       />
                     )}

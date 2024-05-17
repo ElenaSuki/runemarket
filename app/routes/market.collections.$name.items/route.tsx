@@ -135,7 +135,7 @@ export default function MarketCollectionItemsPage() {
                 <img
                   loading="lazy"
                   className="h-full w-full"
-                  src={`https://ordinals.com/content/${item.etch_tx_hash}i0`}
+                  src={`https://ordin.s3.amazonaws.com/inscriptions/${item.etch_tx_hash}i0`}
                   alt={item.rune_spaced_name}
                 />
               </div>

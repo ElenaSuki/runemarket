@@ -4,7 +4,10 @@ import { createHash } from "crypto";
 import dayjs from "dayjs";
 import { z } from "zod";
 
-import { getAddressRuneUTXOs, getRuneInfo } from "@/lib/apis/unisat/api";
+import {
+  getAddressRuneUTXOsByUnisat,
+  getRuneInfo,
+} from "@/lib/apis/unisat/api";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import {
   OfferCreateReqSchema,
@@ -56,7 +59,7 @@ export const action: ActionFunction = async ({ request }) => {
 
     const [runeAsset, utxos] = await Promise.all([
       getRuneInfo(network, data.rune_id),
-      getAddressRuneUTXOs(network, data.address, data.rune_id),
+      getAddressRuneUTXOsByUnisat(network, data.address, data.rune_id),
     ]);
 
     if (!runeAsset) {
