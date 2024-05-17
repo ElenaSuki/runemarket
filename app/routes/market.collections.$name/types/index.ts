@@ -12,4 +12,5 @@ export type MarketPageCollectionResponseType = {
   volume_total: string;
   sales_24h: number;
   items_count: number;
+  holders: number;
 };

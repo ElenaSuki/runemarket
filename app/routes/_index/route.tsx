@@ -69,6 +69,7 @@ export const loader: LoaderFunction = async ({ request }) => {
       validItems,
       collectionOffersData,
       collectionOrdersData,
+      collectionHolders,
     ] = await DatabaseInstance.$transaction([
       DatabaseInstance.rune_collection.findMany({
         select: {
@@ -131,6 +132,31 @@ export const loader: LoaderFunction = async ({ request }) => {
           GROUP BY
             collection_name
         `,
+      DatabaseInstance.$queryRaw<
+        {
+          collection_name: string;
+          holders: bigint;
+        }[]
+      >`
+          SELECT
+            collection_name,
+            COUNT(*) AS holders
+          FROM (
+            SELECT
+              collection_name,
+              inscription_holder
+            FROM
+              rune_collection_item
+            WHERE
+              valid = 1
+            AND
+              inscription_holder = rune_holder
+            GROUP BY
+              collection_name, inscription_holder
+          ) AS grouped_results
+          GROUP BY
+            collection_name
+        `,
     ]);
 
     for (const collection of collections) {
@@ -144,6 +170,10 @@ export const loader: LoaderFunction = async ({ request }) => {
       const validItemsCount = validItems.find(
         (item) => item.collection_name === collection.name,
       )?.items_count;
+
+      const holders = collectionHolders.find(
+        (holder) => holder.collection_name === collection.name,
+      )?.holders;
 
       const icon = await RedisInstance.get(
         `collections:icon:${collection.name}`,
@@ -161,6 +191,7 @@ export const loader: LoaderFunction = async ({ request }) => {
           : 0,
         icon: icon || "",
         items_count: validItemsCount ? parseInt(validItemsCount.toString()) : 0,
+        holders: holders ? parseInt(holders.toString()) : 0,
       });
     }
 
@@ -182,6 +213,8 @@ export const loader: LoaderFunction = async ({ request }) => {
           return b.sales_24h - a.sales_24h;
         } else if (sort === "listings") {
           return b.listings - a.listings;
+        } else if (sort === "holders") {
+          return b.holders - a.holders;
         } else {
           return 0;
         }
@@ -264,6 +297,7 @@ export default function IndexPage() {
             <SelectItem value="volume">Volume</SelectItem>
             <SelectItem value="transactions">Transactions</SelectItem>
             <SelectItem value="listings">Listings</SelectItem>
+            <SelectItem value="holders">Holders</SelectItem>
           </SelectContent>
         </Select>
       </div>

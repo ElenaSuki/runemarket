@@ -23,4 +23,5 @@ export type IndexPageCollectionResponseType = {
   sales_24h: number;
   icon: string;
   items_count: number;
+  holders: number;
 };

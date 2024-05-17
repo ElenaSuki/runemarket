@@ -59,6 +59,7 @@ export const loader: LoaderFunction = async ({ params }) => {
       volume_total: "0",
       sales_24h: 0,
       items_count: 0,
+      holders: 0,
     },
     kline: [],
   };
@@ -76,14 +77,18 @@ export const loader: LoaderFunction = async ({ params }) => {
   if (collectionCache) {
     response.collection = JSON.parse(collectionCache);
   } else {
-    const [collectionOffersData, collectionOrdersData, validItems] =
-      await DatabaseInstance.$transaction([
-        DatabaseInstance.$queryRaw<
-          {
-            floor_price: string;
-            listings: bigint;
-          }[]
-        >`
+    const [
+      collectionOffersData,
+      collectionOrdersData,
+      validItems,
+      collectionHolders,
+    ] = await DatabaseInstance.$transaction([
+      DatabaseInstance.$queryRaw<
+        {
+          floor_price: string;
+          listings: bigint;
+        }[]
+      >`
         SELECT
           MIN(unit_price) AS floor_price,
           COUNT(*) AS listings
@@ -94,14 +99,14 @@ export const loader: LoaderFunction = async ({ params }) => {
         AND
           collection_name = ${name}
         `,
-        DatabaseInstance.$queryRaw<
-          {
-            volume_24h: string;
-            volume_7d: string;
-            volume_total: string;
-            sales_24h: bigint;
-          }[]
-        >`
+      DatabaseInstance.$queryRaw<
+        {
+          volume_24h: string;
+          volume_7d: string;
+          volume_total: string;
+          sales_24h: bigint;
+        }[]
+      >`
         SELECT
           SUM(CASE WHEN create_at >= UNIX_TIMESTAMP(NOW() - INTERVAL 24 HOUR) THEN total_price ELSE 0 END) AS volume_24h,
           SUM(CASE WHEN create_at >= UNIX_TIMESTAMP(NOW() - INTERVAL 7 DAY) THEN total_price ELSE 0 END) AS volume_7d,
@@ -112,11 +117,11 @@ export const loader: LoaderFunction = async ({ params }) => {
         WHERE
           collection_name = ${name}
         `,
-        DatabaseInstance.$queryRaw<
-          {
-            items_count: bigint;
-          }[]
-        >`
+      DatabaseInstance.$queryRaw<
+        {
+          items_count: bigint;
+        }[]
+      >`
         SELECT
           COUNT(*) AS items_count
         FROM
@@ -126,7 +131,30 @@ export const loader: LoaderFunction = async ({ params }) => {
         AND
           collection_name = ${name}
         `,
-      ]);
+      DatabaseInstance.$queryRaw<
+        {
+          holders: bigint;
+        }[]
+      >`
+        SELECT
+          COUNT(*) AS holders
+        FROM (
+          SELECT
+            inscription_holder,
+            COUNT(*) AS balance
+          FROM
+            rune_collection_item
+          WHERE
+            valid = 1
+          AND
+            collection_name = ${name}
+          AND
+            inscription_holder = rune_holder
+          GROUP BY
+            inscription_holder
+        ) AS grouped_results
+        `,
+    ]);
 
     if (collectionOffersData.length > 0) {
       response.collection.floor_price =
@@ -150,6 +178,12 @@ export const loader: LoaderFunction = async ({ params }) => {
     if (validItems.length > 0) {
       response.collection.items_count = parseInt(
         validItems[0].items_count.toString(),
+      );
+    }
+
+    if (collectionHolders.length > 0) {
+      response.collection.holders = parseInt(
+        collectionHolders[0].holders.toString(),
       );
     }
 
@@ -281,6 +315,10 @@ export default function MarketCollectionPage() {
           </div>
         </div>
         <div className="flex grow flex-col items-center justify-center space-y-2 overflow-hidden rounded-lg bg-secondary px-4 py-3">
+          <div className="font-medium text-secondary">Holders</div>
+          <div className="text-sm">{formatNumber(data.collection.holders)}</div>
+        </div>
+        <div className="flex grow flex-col items-center justify-center space-y-2 overflow-hidden rounded-lg bg-secondary px-4 py-3">
           <div className="font-medium text-secondary">Listings</div>
           <div className="text-sm">
             {formatNumber(data.collection.listings)}
@@ -398,6 +436,17 @@ export default function MarketCollectionPage() {
             }}
           >
             Items
+          </TabsTrigger>
+          <TabsTrigger
+            className="h-10 data-[state=active]:border-b data-[state=active]:border-theme data-[state=active]:text-theme"
+            value="holders"
+            onClick={() => {
+              navigate(`/market/collections/${name}/holders`, {
+                preventScrollReset: true,
+              });
+            }}
+          >
+            Top Holders
           </TabsTrigger>
         </TabsList>
       </Tabs>

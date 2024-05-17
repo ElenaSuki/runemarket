@@ -92,6 +92,12 @@ const CollectionsTable: React.FC<{
               </div>
             </div>
             <div className="flex w-full items-center justify-between">
+              <div className="text-base">Holders</div>
+              <div className="text-base">
+                {formatNumber(collection.holders)}
+              </div>
+            </div>
+            <div className="flex w-full items-center justify-between">
               <div className="text-base">Sales(24H)</div>
               <div className="text-base">
                 {formatNumber(collection.sales_24h)}
