@@ -53,7 +53,7 @@ export const getRuneInfo = async (network: Network, runeId: string) => {
   return resp.data.data;
 };
 
-export const getAddressRuneUTXOs = async (
+export const getAddressRuneUTXOsByUnisat = async (
   network: Network,
   address: string,
   runeId: string,

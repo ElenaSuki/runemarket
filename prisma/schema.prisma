@@ -112,14 +112,17 @@ model rune_collection {
 }
 
 model rune_collection_item {
-  id               Int    @id @default(autoincrement())
-  collection_name  String @db.VarChar(255)
-  rune_id          String @db.VarChar(255)
-  rune_name        String @db.VarChar(255)
-  rune_spaced_name String @db.VarChar(255)
-  etch_tx_hash     String @unique @db.Char(64)
-  valid            Int    @db.UnsignedTinyInt
+  id                 Int     @id @default(autoincrement())
+  collection_name    String  @db.VarChar(255)
+  rune_id            String  @db.VarChar(255)
+  rune_name          String  @db.VarChar(255)
+  rune_spaced_name   String  @db.VarChar(255)
+  etch_tx_hash       String  @unique @db.Char(64)
+  valid              Int     @db.UnsignedTinyInt
+  inscription_holder String? @db.VarChar(255)
+  rune_holder        String? @db.VarChar(255)
 
   @@index([valid, collection_name])
   @@index([valid, rune_spaced_name])
+  @@index([valid, collection_name, inscription_holder, rune_holder])
 }

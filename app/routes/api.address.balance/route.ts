@@ -4,7 +4,10 @@ import { z } from "zod";
 
 import { getAddressRuneBalance } from "@/lib/apis/luminex";
 import { getAddressRuneUTXOs } from "@/lib/apis/magic-eden";
-import { getAddressInscriptions } from "@/lib/apis/unisat/api";
+import {
+  getAddressInscriptions,
+  getAddressRuneUTXOsByUnisat,
+} from "@/lib/apis/unisat/api";
 import { getAddressUTXOs } from "@/lib/apis/wizz";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import RedisInstance from "@/lib/server/redis.server";
@@ -102,18 +105,62 @@ export const action: ActionFunction = async ({ request }) => {
       });
     }
 
-    const redisRune = await RedisInstance.hvals(
-      `address:${data.address}:validrunes`,
-    );
-
-    redisRune.forEach((rune) => {
-      const obj: Omit<ValidAddressRuneAsset, "type" | "inscription"> =
-        JSON.parse(rune);
-
-      validRunes.set(`${obj.txid}:${obj.vout}`, obj);
-    });
-
     const validRunesArray = Array.from(validRunes.values());
+
+    const unisatRuneIds: string[] = [];
+
+    for (const rune of balance) {
+      const exist = validRunesArray.find(
+        (item) => item.runeId === `${rune.rune_block}:${rune.rune_tx}`,
+      );
+
+      if (!exist) {
+        unisatRuneIds.push(`${rune.rune_block}:${rune.rune_tx}`);
+      }
+    }
+
+    const unisatRuneIdsChunks: string[][] = [];
+
+    for (let i = 0; i < unisatRuneIds.length; i += 2) {
+      const chunk = unisatRuneIds.slice(i, i + 2);
+      unisatRuneIdsChunks.push(chunk);
+    }
+
+    for (const chunk of unisatRuneIdsChunks) {
+      const results = await Promise.all(
+        chunk.map((rune) =>
+          getAddressRuneUTXOsByUnisat(network, data.address, rune),
+        ),
+      );
+
+      results.forEach((result) => {
+        if (result.length > 1) return;
+
+        const asset = result[0];
+
+        if (asset.runes.length > 1) return;
+
+        const rune = asset.runes[0];
+
+        const exist = validRunesArray.find(
+          (item) => item.runeId === rune.runeId,
+        );
+
+        if (exist) return;
+
+        validRunesArray.push({
+          txid: asset.txid,
+          vout: asset.vout,
+          value: asset.value,
+          amount: rune.amount,
+          runeId: rune.runeId,
+          rune: rune.rune,
+          spacedRune: rune.spacedRune,
+          symbol: rune.symbol,
+          divisibility: rune.divisibility,
+        });
+      });
+    }
 
     const nftItems = await DatabaseInstance.rune_collection_item.findMany({
       select: {

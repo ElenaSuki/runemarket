@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import {
   getAddressInscriptions,
-  getAddressRuneUTXOs,
+  getAddressRuneUTXOsByUnisat,
   getRuneInfo,
 } from "@/lib/apis/unisat/api";
 import DatabaseInstance from "@/lib/server/prisma.server";
@@ -61,7 +61,7 @@ export const action: ActionFunction = async ({ request }) => {
 
     const [runeAsset, utxos, inscriptions] = await Promise.all([
       getRuneInfo(network, data.rune_id),
-      getAddressRuneUTXOs(network, data.address, data.rune_id),
+      getAddressRuneUTXOsByUnisat(network, data.address, data.rune_id),
       getAddressInscriptions(network, data.address),
     ]);
 

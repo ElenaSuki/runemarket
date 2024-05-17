@@ -160,14 +160,6 @@ export const action: ActionFunction = async ({ request }) => {
       }
 
       await DatabaseInstance.$transaction(async () => {
-        await Promise.all(
-          offers.map((offer) => {
-            return RedisInstance.hdel(
-              `address:${offer.lister}:validrunes`,
-              `${offer.rune_spaced_name}`,
-            );
-          }),
-        );
         await DatabaseInstance.activities.createMany({
           data: offers.map((offer) => {
             return {
