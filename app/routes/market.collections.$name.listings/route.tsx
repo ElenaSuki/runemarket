@@ -276,7 +276,7 @@ export default function MarketCollectionListingsPage() {
                     <div className="relative flex aspect-square w-full items-center justify-center">
                       <img
                         className="h-full w-full"
-                        src={`https://ordinals.com/content/${offer.inscriptionId}`}
+                        src={`https://ordin.s3.amazonaws.com/inscriptions/${offer.inscriptionId}`}
                         alt={offer.spacedName}
                       />
                       {account?.ordinals.address === offer.lister && (

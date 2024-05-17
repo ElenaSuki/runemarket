@@ -389,7 +389,7 @@ const BuyModal: React.FC<{
             <div className="relative aspect-square w-48 overflow-hidden rounded-lg bg-secondary">
               <img
                 className="h-full w-full"
-                src={`https://ordinals.com/content/${offer?.inscriptionId}`}
+                src={`https://ordin.s3.amazonaws.com/inscriptions/${offer?.inscriptionId}`}
                 alt={offer?.spacedName}
               />
               <div className="absolute right-2 top-2 rounded-md bg-theme px-2 py-1 text-xs text-white">

@@ -95,7 +95,7 @@ const TokensTable: React.FC<{
                 <div className="flex items-center space-x-2">
                   <Avatar className="h-12 w-12 rounded-md">
                     <AvatarImage
-                      src={`https://ordinals.com/content/${token.etch_tx_hash}i0`}
+                      src={`https://ordin.s3.amazonaws.com/inscriptions/${token.etch_tx_hash}i0`}
                       alt={token.spaced_name}
                     />
                     <AvatarFallback className="rounded-md bg-secondary">

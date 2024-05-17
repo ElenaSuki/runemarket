@@ -32,7 +32,7 @@ const BuySuccessModal: React.FC<{
               <div className="aspect-square w-full overflow-hidden rounded-lg bg-secondary">
                 <img
                   className="h-full w-full"
-                  src={`https://ordinals.com/content/${inscriptionId}`}
+                  src={`https://ordin.s3.amazonaws.com/inscriptions/${inscriptionId}`}
                   alt={inscriptionId}
                 />
               </div>
