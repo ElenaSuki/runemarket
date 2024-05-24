@@ -297,26 +297,20 @@ export default function RunePage() {
                 </a>
               </TableCell>
               <TableCell className="min-w-[250px]">
-                {formatNumber(
-                  parseInt(holder.amount) / 10 ** data.rune.divisibility,
-                )}
+                {formatNumber(parseInt(holder.amount))}
               </TableCell>
               <TableCell className="min-w-[300px]">
                 <div className="flex items-center space-x-4">
                   <Progress
                     className="h-2 w-60"
                     value={
-                      (parseInt(holder.amount) /
-                        10 ** data.rune.divisibility /
-                        parseInt(data.rune.supply)) *
+                      (parseInt(holder.amount) / parseInt(data.rune.supply)) *
                       100
                     }
                   />
                   <div className="text-sm">
                     {`${formatNumber(
-                      (parseInt(holder.amount) /
-                        10 ** data.rune.divisibility /
-                        parseInt(data.rune.supply)) *
+                      (parseInt(holder.amount) / parseInt(data.rune.supply)) *
                         100,
                       {
                         precision: 6,
