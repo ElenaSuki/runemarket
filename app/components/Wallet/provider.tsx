@@ -55,12 +55,11 @@ const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const walletNetwork = await connectorInstance.getNetwork();
 
-      // if (walletNetwork === "testnet") {
-      //   throw new Error("Testnet not supported");
-      // }
+      if (walletNetwork === "testnet") {
+        throw new Error("Testnet not supported");
+      }
 
-      const network =
-        walletNetwork === "testnet" ? networks.testnet : networks.bitcoin;
+      const network = networks.bitcoin;
 
       const addressList = await connectorInstance.requestAccounts();
       const pubkey = await connectorInstance.getPublicKey();
