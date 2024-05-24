@@ -5,14 +5,21 @@ import dayjs from "dayjs";
 import { z } from "zod";
 
 import {
+  getAddressInscriptions,
   getAddressRuneUTXOsByUnisat,
   getRuneInfo,
 } from "@/lib/apis/unisat/api";
+import { SUPPORT_TESTNET } from "@/lib/config";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import {
   OfferCreateReqSchema,
   OfferCreateReqSchemaType,
 } from "@/lib/types/market";
+import {
+  getCollectionName,
+  getNonBundlesCollectionName,
+  sleep,
+} from "@/lib/utils";
 import {
   detectScriptToAddressType,
   isTestnetAddress,
@@ -40,6 +47,10 @@ export const action: ActionFunction = async ({ request }) => {
       return json(errorResponse(10001));
     }
 
+    if (!SUPPORT_TESTNET && isTestnetAddress(data.address)) {
+      return json(errorResponse(20002));
+    }
+
     const network = isTestnetAddress(data.address)
       ? networks.testnet
       : networks.bitcoin;
@@ -57,98 +68,122 @@ export const action: ActionFunction = async ({ request }) => {
       return json(errorResponse(30002));
     }
 
-    const [runeAsset, utxos] = await Promise.all([
-      getRuneInfo(network, data.rune_id),
-      getAddressRuneUTXOsByUnisat(network, data.address, data.rune_id),
-    ]);
-
-    if (!runeAsset) {
-      return json(errorResponse(30013));
-    }
-
-    const validRunes: {
-      txid: string;
-      vout: number;
-      value: number;
-      amount: string;
-    }[] = [];
-
-    utxos.forEach((utxo) => {
-      if (utxo.runes.length !== 1) return;
-
-      const rune = utxo.runes[0];
-
-      validRunes.push({
-        txid: utxo.txid,
-        vout: utxo.vout,
-        value: utxo.value,
-        amount: rune.amount,
-      });
-    });
-
-    const offers: OfferCreateReqSchemaType[] = [];
-
+    // check psbt input signature
     for (let i = 0; i < psbt.txInputs.length; i++) {
-      // check psbt input signature
       const psbtValid = validateInputSignature(psbt, i);
 
       if (!psbtValid) {
         return json(errorResponse(30008));
       }
 
-      const input = psbt.txInputs[i];
-      const inputData = psbt.data.inputs[i];
-      const output = psbt.txOutputs[i];
-
-      if (!inputData.witnessUtxo) {
+      if (!psbt.data.inputs[i].witnessUtxo) {
         return json(errorResponse(30003));
       }
 
       const address = detectScriptToAddressType(
-        inputData.witnessUtxo.script.toString("hex"),
+        psbt.data.inputs[i].witnessUtxo!.script.toString("hex"),
         network,
       );
 
       if (address !== data.address) {
         return json(errorResponse(30004));
       }
+    }
 
-      // check rune valid
-      const txid = reverseBuffer(input.hash).toString("hex");
-      const vout = input.index;
-      const value = inputData.witnessUtxo.value;
+    const runeAsset = await getRuneInfo(network, data.rune_id);
 
-      const utxoValid = validRunes.find(
-        (rune) =>
-          rune.txid === txid && rune.vout === vout && rune.value === value,
-      );
+    const utxos = await getAddressRuneUTXOsByUnisat(
+      network,
+      data.address,
+      data.rune_id,
+    );
 
-      if (!utxoValid) {
-        return json(errorResponse(30005));
+    if (utxos.length !== 1 || utxos[0].runes.length !== 1) {
+      return json(errorResponse(30018));
+    }
+
+    await sleep(400);
+
+    const inscriptions = await getAddressInscriptions(network, data.address);
+
+    const offerPsbt = new Psbt({
+      network,
+    });
+    const unsignedOfferPsbt = new Psbt({ network });
+    const offers: OfferCreateReqSchemaType[] = [];
+
+    let nonBundle = false;
+    let isMerged = false;
+
+    // first input
+    const txInputI = psbt.txInputs[0];
+    const txOutputI = psbt.txOutputs[0];
+    const txInputDataI = psbt.data.inputs[0];
+    const txidI = reverseBuffer(txInputI.hash).toString("hex");
+    const voutI = txInputI.index;
+    const valueI = txInputDataI.witnessUtxo!.value;
+
+    const inscriptionUTXO = inscriptions.find(
+      (inscription) =>
+        inscription.utxo.txid === txidI &&
+        inscription.utxo.vout === voutI &&
+        inscription.utxo.satoshi === valueI,
+    );
+
+    if (!inscriptionUTXO) {
+      // only rune
+      nonBundle = true;
+
+      // only one input
+      if (psbt.txInputs.length !== 1) {
+        return json(errorResponse(30019));
       }
 
-      const unsignedOfferPsbt = new Psbt({ network });
+      // input must be rune item
+      const runeUTXO = utxos.find(
+        (utxo) =>
+          utxo.txid === txidI && utxo.vout === voutI && utxo.value === valueI,
+      );
+
+      if (!runeUTXO) {
+        return json(errorResponse(30019));
+      }
+    } else {
+      // merged rune item
+      const runeUTXO = utxos.find(
+        (utxo) =>
+          utxo.txid === txidI && utxo.vout === voutI && utxo.value === valueI,
+      );
+
+      if (runeUTXO) {
+        isMerged = true;
+
+        if (psbt.txInputs.length !== 1) {
+          return json(errorResponse(30019));
+        }
+      }
+    }
+
+    if (nonBundle) {
+      // only rune process
       unsignedOfferPsbt.addInput({
-        hash: txid,
-        index: vout,
-        sequence: input.sequence,
-        witnessUtxo: inputData.witnessUtxo,
+        hash: txidI,
+        index: voutI,
+        sequence: txInputI.sequence,
+        witnessUtxo: txInputDataI.witnessUtxo,
       });
 
-      unsignedOfferPsbt.addOutput(output);
+      unsignedOfferPsbt.addOutput(txOutputI);
 
-      psbt.finalizeInput(i);
+      psbt.finalizeInput(0);
 
-      const finalizedInput = psbt.data.inputs[i];
-      const finalizedOutput = psbt.txOutputs[i];
-
-      // split offer psbt
-      const offerPsbt = new Psbt({ network });
+      const finalizedInput = psbt.data.inputs[0];
+      const finalizedOutput = psbt.txOutputs[0];
 
       offerPsbt.addInput({
-        hash: txid,
-        index: vout,
-        sequence: input.sequence,
+        hash: txidI,
+        index: voutI,
+        sequence: txInputI.sequence,
         witnessUtxo: finalizedInput.witnessUtxo,
         sighashType: 131,
         finalScriptWitness: finalizedInput.finalScriptWitness,
@@ -157,7 +192,7 @@ export const action: ActionFunction = async ({ request }) => {
       offerPsbt.addOutput(finalizedOutput);
 
       const SHA256 = createHash("sha256")
-        .update(`${txid}:${vout}`)
+        .update(`${txidI}:${voutI}`)
         .digest("hex");
 
       offers.push({
@@ -166,7 +201,7 @@ export const action: ActionFunction = async ({ request }) => {
         rune_name: runeAsset.rune,
         rune_spaced_name: runeAsset.spacedRune,
         unit_price: parseFloat(data.unit_price),
-        amount: parseInt(utxoValid.amount),
+        amount: 1,
         divisibility: runeAsset.divisibility,
         symbol: runeAsset.symbol,
         total_price: BigInt(finalizedOutput.value),
@@ -178,10 +213,174 @@ export const action: ActionFunction = async ({ request }) => {
         unsigned_psbt: unsignedOfferPsbt.toHex(),
         psbt: offerPsbt.toHex(),
         status: 1,
-        location_txid: txid,
-        location_vout: vout,
-        location_value: value,
+        location_txid: txidI,
+        location_vout: voutI,
+        location_value: valueI,
+        collection_name: getNonBundlesCollectionName(runeAsset.spacedRune),
       });
+    } else {
+      if (isMerged) {
+        unsignedOfferPsbt.addInput({
+          hash: txidI,
+          index: voutI,
+          sequence: txInputI.sequence,
+          witnessUtxo: txInputDataI.witnessUtxo,
+        });
+
+        unsignedOfferPsbt.addOutput(txOutputI);
+
+        psbt.finalizeInput(0);
+
+        const finalizedInput = psbt.data.inputs[0];
+        const finalizedOutput = psbt.txOutputs[0];
+
+        offerPsbt.addInput({
+          hash: txidI,
+          index: voutI,
+          sequence: txInputI.sequence,
+          witnessUtxo: finalizedInput.witnessUtxo,
+          sighashType: 131,
+          finalScriptWitness: finalizedInput.finalScriptWitness,
+        });
+
+        offerPsbt.addOutput(finalizedOutput);
+
+        const SHA256 = createHash("sha256")
+          .update(`${txidI}:${voutI}`)
+          .digest("hex");
+
+        offers.push({
+          bid: SHA256,
+          rune_id: data.rune_id,
+          rune_name: runeAsset.rune,
+          rune_spaced_name: runeAsset.spacedRune,
+          unit_price: parseFloat(data.unit_price),
+          amount: 1,
+          divisibility: runeAsset.divisibility,
+          symbol: runeAsset.symbol,
+          total_price: BigInt(finalizedOutput.value),
+          lister: data.address,
+          funding_receiver: detectScriptToAddressType(
+            finalizedOutput.script.toString("hex"),
+            network,
+          ),
+          unsigned_psbt: unsignedOfferPsbt.toHex(),
+          psbt: offerPsbt.toHex(),
+          status: 1,
+          location_txid: txidI,
+          location_vout: voutI,
+          location_value: valueI,
+          inscription_id: inscriptionUTXO!.inscriptionId,
+          inscription_txid: txidI,
+          inscription_vout: voutI,
+          collection_name: getCollectionName(runeAsset.spacedRune),
+        });
+      } else {
+        if (psbt.txInputs.length !== 2) {
+          return json(errorResponse(30019));
+        }
+
+        const txInputII = psbt.txInputs[1];
+        const txOutputII = psbt.txOutputs[1];
+        const txInputDataII = psbt.data.inputs[1];
+        const txidII = reverseBuffer(txInputII.hash).toString("hex");
+        const voutII = txInputII.index;
+        const valueII = txInputDataII.witnessUtxo!.value;
+
+        const runeUTXO = utxos.find(
+          (utxo) =>
+            utxo.txid === txidII &&
+            utxo.vout === voutII &&
+            utxo.value === valueII,
+        );
+
+        if (!runeUTXO) {
+          return json(errorResponse(30019));
+        }
+
+        unsignedOfferPsbt.addInput({
+          hash: txidI,
+          index: voutI,
+          sequence: txInputI.sequence,
+          witnessUtxo: txInputDataI.witnessUtxo,
+        });
+
+        unsignedOfferPsbt.addOutput(txOutputI);
+
+        psbt.finalizeInput(0);
+
+        unsignedOfferPsbt.addInput({
+          hash: txidII,
+          index: voutII,
+          sequence: txInputII.sequence,
+          witnessUtxo: txInputDataII.witnessUtxo,
+        });
+
+        unsignedOfferPsbt.addOutput(txOutputII);
+
+        psbt.finalizeInput(1);
+
+        const finalizedInscriptionInput = psbt.data.inputs[0];
+        const finalizedInscriptionOutput = psbt.txOutputs[0];
+
+        const finalizedRuneInput = psbt.data.inputs[1];
+        const finalizedRuneOutput = psbt.txOutputs[1];
+
+        offerPsbt.addInputs([
+          {
+            hash: txidI,
+            index: voutI,
+            sequence: txInputI.sequence,
+            witnessUtxo: finalizedInscriptionInput.witnessUtxo,
+            sighashType: 131,
+            finalScriptWitness: finalizedInscriptionInput.finalScriptWitness,
+          },
+          {
+            hash: txidII,
+            index: voutII,
+            sequence: txInputII.sequence,
+            witnessUtxo: finalizedRuneInput.witnessUtxo,
+            sighashType: 131,
+            finalScriptWitness: finalizedRuneInput.finalScriptWitness,
+          },
+        ]);
+
+        offerPsbt.addOutputs([finalizedInscriptionOutput, finalizedRuneOutput]);
+
+        const SHA256 = createHash("sha256")
+          .update(`${txidI}:${voutI}`)
+          .update(`${txidII}:${voutII}`)
+          .digest("hex");
+
+        offers.push({
+          bid: SHA256,
+          rune_id: data.rune_id,
+          rune_name: runeAsset.rune,
+          rune_spaced_name: runeAsset.spacedRune,
+          unit_price: parseFloat(data.unit_price),
+          amount: 1,
+          divisibility: runeAsset.divisibility,
+          symbol: runeAsset.symbol,
+          total_price:
+            BigInt(finalizedRuneOutput.value) +
+            BigInt(finalizedInscriptionOutput.value),
+          lister: data.address,
+          funding_receiver: detectScriptToAddressType(
+            finalizedRuneOutput.script.toString("hex"),
+            network,
+          ),
+          unsigned_psbt: unsignedOfferPsbt.toHex(),
+          psbt: offerPsbt.toHex(),
+          status: 1,
+          location_txid: txidII,
+          location_vout: voutII,
+          location_value: valueII,
+          inscription_id: inscriptionUTXO!.inscriptionId,
+          inscription_txid: txidI,
+          inscription_vout: voutI,
+          collection_name: getCollectionName(runeAsset.spacedRune),
+        });
+      }
     }
 
     try {
@@ -208,6 +407,7 @@ export const action: ActionFunction = async ({ request }) => {
               total_price: item.total_price,
               type: "list",
               timestamp: dayjs().unix(),
+              inscription_id: item.inscription_id,
             };
           }),
         });
@@ -227,30 +427,6 @@ export const action: ActionFunction = async ({ request }) => {
               bid: offer.bid,
             },
           });
-        }
-
-        if (runeAsset.supply !== "1") {
-          const token = await DatabaseInstance.rune_token.findFirst({
-            where: {
-              rune_id: data.rune_id,
-            },
-          });
-
-          if (!token) {
-            await DatabaseInstance.rune_token.create({
-              data: {
-                rune_id: data.rune_id,
-                name: runeAsset.rune || "",
-                spaced_name: runeAsset.spacedRune || "",
-                divisibility: runeAsset.divisibility || 0,
-                symbol: runeAsset.symbol || "",
-                etch_tx_hash: runeAsset.etching || "",
-                supply: runeAsset.supply || "0",
-                holders: runeAsset.holders || 0,
-                sort: 0,
-              },
-            });
-          }
         }
       });
     } catch (e) {
