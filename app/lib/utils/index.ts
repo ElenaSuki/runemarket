@@ -165,3 +165,29 @@ export const getCollectionName = (fullName: string) => {
 
   return fullName.split("•")[0];
 };
+
+export const getNonBundlesCollectionName = (fullName: string) => {
+  const map = {
+    "BIRD•": "TOKEN_BIRD",
+    "MONKE•": "TOKEN_MONKE",
+    "BLOK•BLOK•BLOK•": "TOKEN_BLOK",
+    "RUNE•BULL•": "TOKEN_BULL",
+    "BITCOIN•RUNE•MAP•": "TOKEN_RUNE_MAP",
+    "BITCOIN•SWOGZ•": "TOKEN_SWOGZ",
+    "PUPPET•": "TOKEN_PUPPET",
+    "PUNK•": "TOKEN_PUNK",
+    "SIDS•LOGOS•": "TOKEN_SIDS_LOGOS",
+    "RUNECARDS•": "TOKEN_RUNECARDS",
+    "RUNEX•UNNAMED•": "TOKEN_RUNEX_UNNAMED",
+    "BLOCKPEPE•RUNES•": "TOKEN_BLOCKPEPE",
+    "ENIGMA•": "TOKEN_ENIGMA",
+  };
+
+  for (const key in map) {
+    if (fullName.startsWith(key)) {
+      return map[key as keyof typeof map];
+    }
+  }
+
+  return undefined;
+};
