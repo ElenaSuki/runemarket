@@ -5,9 +5,7 @@ import DatabaseInstance from "@/lib/server/prisma.server";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
-  rune_id: z.string().optional(),
-  type: z.enum(["collection", "token"]),
-  collection_name: z.string().optional(),
+  collection_name: z.string(),
 });
 
 type RequestSchemaType = z.infer<typeof RequestSchema>;
@@ -29,9 +27,7 @@ export const action: ActionFunction = async ({ request }) => {
         },
         where: {
           status: 1,
-          rune_id: data.type === "token" ? data.rune_id : undefined,
-          collection_name:
-            data.type === "collection" ? data.collection_name : undefined,
+          collection_name: data.collection_name,
         },
         orderBy: [
           {
@@ -43,9 +39,7 @@ export const action: ActionFunction = async ({ request }) => {
       DatabaseInstance.orders.findMany({
         select: { unit_price: true },
         where: {
-          rune_id: data.type === "token" ? data.rune_id : undefined,
-          collection_name:
-            data.type === "collection" ? data.collection_name : undefined,
+          collection_name: data.collection_name,
         },
         orderBy: [
           {

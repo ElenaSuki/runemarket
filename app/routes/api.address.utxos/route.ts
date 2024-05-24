@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { getLastBlockHeight } from "@/lib/apis/mempool";
 import { getBTCUTXOs } from "@/lib/apis/unisat/api";
+import { SUPPORT_TESTNET } from "@/lib/config";
 import RedisInstance from "@/lib/server/redis.server";
-import { detectAddressTypeToScripthash } from "@/lib/utils/address-helpers";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
@@ -25,6 +25,10 @@ export const action: ActionFunction = async ({ request }) => {
       return json(errorResponse(10001));
     }
 
+    if (data.network === "testnet" && !SUPPORT_TESTNET) {
+      return json(errorResponse(20002));
+    }
+
     const cache = await RedisInstance.get(`address:utxos:${data.address}`);
 
     if (cache) {
@@ -41,48 +45,25 @@ export const action: ActionFunction = async ({ request }) => {
     const [utxos, blockHeight] = await Promise.all([
       getBTCUTXOs(network, data.address),
       getLastBlockHeight(network),
-      // getAddressRuneBalance(network, data.address),
     ]);
-
-    const runeUTXOs: {
-      tx: string;
-      vout: number;
-    }[] = [];
-
-    // runeBalance.forEach((rune) => {
-    //   rune.utxos.forEach((utxo) => {
-    //     runeUTXOs.push({
-    //       tx: utxo.tx_id,
-    //       vout: utxo.vout,
-    //     });
-    //   });
-    // });
 
     const validUTXOs = utxos.filter((utxo) => {
       if (utxo.height > blockHeight) return false;
 
       if (utxo.satoshi <= 546) return false;
 
-      if (
-        runeUTXOs.some(
-          (runeUTXO) =>
-            runeUTXO.tx === utxo.txid && runeUTXO.vout === utxo.vout,
-        )
-      )
-        return false;
-
       return true;
     });
 
+    const array = validUTXOs.map((utxo) => ({
+      txid: utxo.txid,
+      vout: utxo.vout,
+      value: utxo.satoshi,
+    }));
+
     await RedisInstance.set(
       `address:utxos:${data.address}`,
-      JSON.stringify(
-        validUTXOs.map((utxo) => ({
-          txid: utxo.txid,
-          vout: utxo.vout,
-          value: utxo.satoshi,
-        })),
-      ),
+      JSON.stringify(array),
       "EX",
       60,
       "NX",
@@ -91,11 +72,7 @@ export const action: ActionFunction = async ({ request }) => {
     return json({
       code: 0,
       error: false,
-      data: validUTXOs.map((utxo) => ({
-        txid: utxo.txid,
-        vout: utxo.vout,
-        value: utxo.satoshi,
-      })),
+      data: array,
     });
   } catch (e) {
     console.log(e);

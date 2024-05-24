@@ -2,13 +2,13 @@ import { ActionFunction, json } from "@remix-run/node";
 import { networks } from "bitcoinjs-lib";
 import { z } from "zod";
 
-import { getAddressRuneBalance } from "@/lib/apis/luminex";
-import { getAddressRuneUTXOs } from "@/lib/apis/magic-eden";
+import { getAddressRuneWithLocation } from "@/lib/apis/indexer/api";
 import {
   getAddressInscriptions,
-  getAddressRuneUTXOsByUnisat,
+  getAddressRuneBalanceList,
 } from "@/lib/apis/unisat/api";
 import { getAddressUTXOs } from "@/lib/apis/wizz";
+import { SUPPORT_TESTNET } from "@/lib/config";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import RedisInstance from "@/lib/server/redis.server";
 import { ValidAddressRuneAsset } from "@/lib/types/rune";
@@ -32,6 +32,10 @@ export const action: ActionFunction = async ({ request }) => {
       return json(errorResponse(10001));
     }
 
+    if (data.network === "testnet" && !SUPPORT_TESTNET) {
+      return json(errorResponse(20002));
+    }
+
     const cache = await RedisInstance.get(`address:balance:${data.address}`);
 
     if (cache) {
@@ -47,120 +51,49 @@ export const action: ActionFunction = async ({ request }) => {
 
     const { scripthash } = detectAddressTypeToScripthash(data.address);
 
-    const [utxos, balance] = await Promise.all([
+    const [balance, runelocations, utxos] = await Promise.all([
+      getAddressRuneBalanceList(network, data.address),
+      getAddressRuneWithLocation(data.address),
       getAddressUTXOs(network, scripthash),
-      getAddressRuneBalance(network, data.address),
     ]);
-
-    const runeNames = balance.map((item) => item.rune_text.replaceAll("•", ""));
-
-    const chunks: string[][] = [];
-
-    for (let i = 0; i < runeNames.length; i += 5) {
-      const chunk = runeNames.slice(i, i + 5);
-      chunks.push(chunk);
-    }
 
     const validRunes: Map<
       string,
       Omit<ValidAddressRuneAsset, "type" | "inscription">
     > = new Map();
 
-    for (const chunk of chunks) {
-      const results = await Promise.all(
-        chunk.map((rune) => getAddressRuneUTXOs(network, data.address, rune)),
-      );
-
-      results.forEach((result) => {
-        result.forEach((runeUTXO) => {
-          if (runeUTXO.spent) return;
-
-          const [txid, vout] = runeUTXO.location.split(":");
-
-          const value =
-            utxos.find(
-              (utxo) => utxo.txid === txid && utxo.vout === parseInt(vout),
-            )?.value || 0;
-          const runeData = balance.find(
-            (b) => b.rune_text.replaceAll("•", "") === runeUTXO.rune,
-          );
-
-          if (!runeData || value === 0) return;
-
-          validRunes.set(`${runeUTXO.location}`, {
-            txid,
-            vout: parseInt(vout),
-            value,
-            amount: (
-              parseFloat(runeData.balance) /
-              10 ** runeData.divisibility
-            ).toString(),
-            runeId: `${runeData.rune_block}:${runeData.rune_tx}`,
-            rune: runeData.rune_text.replaceAll("•", ""),
-            spacedRune: runeData.rune_text,
-            symbol: runeData.symbol,
-            divisibility: runeData.divisibility,
-          });
-        });
-      });
-    }
-
-    const validRunesArray = Array.from(validRunes.values());
-
-    const unisatRuneIds: string[] = [];
-
     for (const rune of balance) {
-      const exist = validRunesArray.find(
-        (item) => item.runeId === `${rune.rune_block}:${rune.rune_tx}`,
+      const existLocation = runelocations.data.find(
+        (item) => item.rune_id === rune.runeid,
       );
 
-      if (!exist) {
-        unisatRuneIds.push(`${rune.rune_block}:${rune.rune_tx}`);
-      }
-    }
+      if (!existLocation) continue;
 
-    const unisatRuneIdsChunks: string[][] = [];
-
-    for (let i = 0; i < unisatRuneIds.length; i += 2) {
-      const chunk = unisatRuneIds.slice(i, i + 2);
-      unisatRuneIdsChunks.push(chunk);
-    }
-
-    for (const chunk of unisatRuneIdsChunks) {
-      const results = await Promise.all(
-        chunk.map((rune) =>
-          getAddressRuneUTXOsByUnisat(network, data.address, rune),
-        ),
+      const utxo = utxos.find(
+        (item) =>
+          item.txid === existLocation.location_txid &&
+          item.vout === existLocation.location_vout,
       );
 
-      results.forEach((result) => {
-        if (result.length > 1) return;
+      if (!utxo) continue;
 
-        const asset = result[0];
-
-        if (asset.runes.length > 1) return;
-
-        const rune = asset.runes[0];
-
-        const exist = validRunesArray.find(
-          (item) => item.runeId === rune.runeId,
-        );
-
-        if (exist) return;
-
-        validRunesArray.push({
-          txid: asset.txid,
-          vout: asset.vout,
-          value: asset.value,
+      validRunes.set(
+        `${existLocation.location_txid}:${existLocation.location_vout}`,
+        {
+          txid: utxo.txid,
+          vout: utxo.vout,
+          value: utxo.value,
           amount: rune.amount,
-          runeId: rune.runeId,
+          runeId: rune.runeid,
           rune: rune.rune,
           spacedRune: rune.spacedRune,
           symbol: rune.symbol,
           divisibility: rune.divisibility,
-        });
-      });
+        },
+      );
     }
+
+    const validRunesArray = Array.from(validRunes.values());
 
     const nftItems = await DatabaseInstance.rune_collection_item.findMany({
       select: {
@@ -177,51 +110,44 @@ export const action: ActionFunction = async ({ request }) => {
 
     const inscriptions = await getAddressInscriptions(network, data.address);
 
-    const validCollectionRunes: ValidAddressRuneAsset[] = validRunesArray.map(
-      (item) => {
-        const nftMatch = nftItems.find(
-          (nft) => nft.rune_spaced_name === item.spacedRune,
+    const formatRunes: ValidAddressRuneAsset[] = validRunesArray.map((item) => {
+      const nftMatch = nftItems.find(
+        (nft) => nft.rune_spaced_name === item.spacedRune,
+      );
+
+      if (nftMatch) {
+        const inscription = inscriptions.find(
+          (insc) => insc.inscriptionId.split("i")[0] === nftMatch.etch_tx_hash,
         );
 
-        if (nftMatch) {
-          const inscription = inscriptions.find(
-            (insc) =>
-              insc.inscriptionId.split("i")[0] === nftMatch.etch_tx_hash,
-          );
-
-          if (inscription) {
-            return {
-              ...item,
-              type: "nft",
-              inscription: {
-                inscriptionId: inscription.inscriptionId,
-                txid: inscription.utxo.txid,
-                vout: inscription.utxo.vout,
-                value: inscription.utxo.satoshi,
-              },
-            };
-          } else {
-            return {
-              ...item,
-              type: "token",
-            };
-          }
+        if (inscription) {
+          return {
+            ...item,
+            type: "nft",
+            inscription: {
+              inscriptionId: inscription.inscriptionId,
+              txid: inscription.utxo.txid,
+              vout: inscription.utxo.vout,
+              value: inscription.utxo.satoshi,
+            },
+          };
         } else {
           return {
             ...item,
             type: "token",
           };
         }
-      },
-    );
+      } else {
+        return {
+          ...item,
+          type: "token",
+        };
+      }
+    });
 
-    RedisInstance.set(
+    await RedisInstance.set(
       `address:balance:${data.address}`,
-      JSON.stringify(
-        validCollectionRunes.filter(
-          (item) => item.type === "nft" && item.inscription,
-        ),
-      ),
+      JSON.stringify(formatRunes),
       "EX",
       60 * 1,
       "NX",
@@ -230,9 +156,7 @@ export const action: ActionFunction = async ({ request }) => {
     return json({
       code: 0,
       error: false,
-      data: validCollectionRunes.filter(
-        (item) => item.type === "nft" && item.inscription,
-      ),
+      data: formatRunes,
     });
   } catch (e) {
     console.log(e);
