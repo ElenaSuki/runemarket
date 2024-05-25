@@ -100,15 +100,17 @@ model rune_token {
 }
 
 model rune_collection {
-  id           Int     @id @default(autoincrement())
-  name         String  @db.VarChar(255)
-  display_name String  @db.VarChar(255)
-  description  String? @db.LongText
-  x_link       String? @db.VarChar(255)
-  symbol       String  @db.VarChar(255)
-  sort         Int     @db.UnsignedTinyInt
+  id              Int     @id @default(autoincrement())
+  name            String  @db.VarChar(255)
+  display_name    String  @db.VarChar(255)
+  description     String? @db.LongText
+  x_link          String? @db.VarChar(255)
+  symbol          String  @db.VarChar(255)
+  sort            Int     @db.UnsignedTinyInt
+  collection_type String  @db.VarChar(255)
 
   @@index([name])
+  @@index([collection_type, sort])
 }
 
 model rune_collection_item {
