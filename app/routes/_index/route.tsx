@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/Tabs";
 
 import CollectionsTable from "./components/CollectionsTable";
 import { IndexPageCollectionResponseType } from "./types";
@@ -237,15 +238,23 @@ export default function IndexPage() {
 
   const [filters, setFilters] = useState("");
 
-  const bundleCollections = useMemo(() => {
-    return data.filter((collection) => collection.collection_type === "bundle");
-  }, [data]);
-
   const query = useMemo(() => {
     return {
       sort: searchParams.get("sort") || "volume",
     };
   }, [searchParams]);
+
+  const tabsType = useMemo(() => {
+    return searchParams.get("type") === "token" ? "token" : "collection";
+  }, [searchParams]);
+
+  const filterCollections = useMemo(() => {
+    return data.filter((collection) =>
+      tabsType === "collection"
+        ? collection.collection_type === "bundle"
+        : collection.collection_type === "token",
+    );
+  }, [tabsType]);
 
   if (error) {
     return (
@@ -257,6 +266,43 @@ export default function IndexPage() {
 
   return (
     <div className="w-full space-y-6">
+      <Tabs
+        value={tabsType}
+        className="flex w-full items-center justify-center space-x-6"
+      >
+        <TabsList>
+          <TabsTrigger
+            onClick={() =>
+              updateSearchParams(
+                { type: "" },
+                {
+                  action: "push",
+                  scroll: false,
+                },
+              )
+            }
+            className="rounded-md bg-transparent font-bold transition-colors data-[state=active]:bg-secondary data-[state=active]:text-theme"
+            value="collection"
+          >
+            Collections
+          </TabsTrigger>
+          <TabsTrigger
+            onClick={() =>
+              updateSearchParams(
+                { type: "token" },
+                {
+                  action: "push",
+                  scroll: false,
+                },
+              )
+            }
+            className="rounded-md bg-transparent font-bold transition-colors data-[state=active]:bg-secondary data-[state=active]:text-theme"
+            value="token"
+          >
+            Tokens
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       <div className="flex w-full space-x-4">
         <div className="w-full">
           <Input
@@ -291,8 +337,14 @@ export default function IndexPage() {
           </SelectContent>
         </Select>
       </div>
+      {tabsType === "token" && (
+        <div className="text-sm text-secondary">
+          Warning: items in this page only contain rune tokens, please make sure
+          you are searching for the correct page.
+        </div>
+      )}
       <CollectionsTable
-        collections={bundleCollections}
+        collections={filterCollections}
         filters={filters}
       />
     </div>

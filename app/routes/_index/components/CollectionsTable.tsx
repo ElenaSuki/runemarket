@@ -30,7 +30,11 @@ const CollectionsTable: React.FC<{
       {sortedCollections.map((collection, index) => (
         <div
           onClick={() =>
-            navigate(`/market/collections/${collection.name}/listings`)
+            navigate(
+              collection.collection_type === "bundle"
+                ? `/market/collections/${collection.name}/listings`
+                : `/market/tokens/${collection.name}/listings`,
+            )
           }
           key={collection.name}
           className="flex w-full cursor-pointer flex-col space-y-6 rounded-lg border border-transparent bg-secondary p-6 transition-colors hover:border-theme"
@@ -50,7 +54,6 @@ const CollectionsTable: React.FC<{
             </div>
             <div className="shrink-0 text-xl font-bold text-theme">{`# ${index}`}</div>
           </div>
-
           <div className="w-full space-y-3">
             <div className="flex w-full items-center justify-between">
               <div className="text-base">Floor Price</div>
@@ -85,18 +88,22 @@ const CollectionsTable: React.FC<{
                 {formatNumber(collection.listings)}
               </div>
             </div>
-            <div className="flex w-full items-center justify-between">
-              <div className="text-base">Items</div>
-              <div className="text-base">
-                {formatNumber(collection.items_count)}
-              </div>
-            </div>
-            <div className="flex w-full items-center justify-between">
-              <div className="text-base">Holders</div>
-              <div className="text-base">
-                {formatNumber(collection.holders)}
-              </div>
-            </div>
+            {collection.collection_type === "bundle" && (
+              <>
+                <div className="flex w-full items-center justify-between">
+                  <div className="text-base">Items</div>
+                  <div className="text-base">
+                    {formatNumber(collection.items_count)}
+                  </div>
+                </div>
+                <div className="flex w-full items-center justify-between">
+                  <div className="text-base">Holders</div>
+                  <div className="text-base">
+                    {formatNumber(collection.holders)}
+                  </div>
+                </div>
+              </>
+            )}
             <div className="flex w-full items-center justify-between">
               <div className="text-base">Sales(24H)</div>
               <div className="text-base">
