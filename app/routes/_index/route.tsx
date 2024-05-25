@@ -16,10 +16,7 @@ import {
 } from "@/components/Select";
 
 import CollectionsTable from "./components/CollectionsTable";
-import {
-  IndexPageCollectionResponseType,
-  IndexPageTokenResponseType,
-} from "./types";
+import { IndexPageCollectionResponseType } from "./types";
 
 export const loader: LoaderFunction = async ({ request }) => {
   try {
@@ -28,18 +25,12 @@ export const loader: LoaderFunction = async ({ request }) => {
 
     const sort = searchParams.get("sort") || "volume";
 
-    const response: {
-      tokens: IndexPageTokenResponseType[];
-      collections: IndexPageCollectionResponseType[];
-    } = {
-      tokens: [],
-      collections: [],
-    };
+    const response: IndexPageCollectionResponseType[] = [];
 
     const cache = await RedisInstance.get("collections:state");
 
     if (cache) {
-      response.collections.push(
+      response.push(
         ...JSON.parse(cache).sort(
           (
             a: IndexPageCollectionResponseType,
@@ -76,6 +67,7 @@ export const loader: LoaderFunction = async ({ request }) => {
           name: true,
           display_name: true,
           symbol: true,
+          collection_type: true,
         },
       }),
       DatabaseInstance.$queryRaw<
@@ -179,7 +171,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         `collections:icon:${collection.name}`,
       );
 
-      response.collections.push({
+      response.push({
         ...collection,
         floor_price: collectionOffer?.floor_price?.toString() || "0",
         listings: collectionOffer?.listings
@@ -197,12 +189,12 @@ export const loader: LoaderFunction = async ({ request }) => {
 
     RedisInstance.set(
       "collections:state",
-      JSON.stringify(response.collections),
+      JSON.stringify(response),
       "EX",
       60 * 1,
     );
 
-    response.collections.sort(
+    response.sort(
       (
         a: IndexPageCollectionResponseType,
         b: IndexPageCollectionResponseType,
@@ -229,10 +221,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     console.log(e);
     return json({
       error: "Internal Server Error",
-      data: {
-        tokens: [],
-        collections: [],
-      },
+      data: [],
     });
   }
 };
@@ -240,16 +229,17 @@ export const loader: LoaderFunction = async ({ request }) => {
 export default function IndexPage() {
   const { error, data } = useLoaderData<{
     error: string | null;
-    data: {
-      tokens: IndexPageTokenResponseType[];
-      collections: IndexPageCollectionResponseType[];
-    };
+    data: IndexPageCollectionResponseType[];
   }>();
 
   const { state } = useNavigation();
   const { searchParams, updateSearchParams } = useSetSearch();
 
   const [filters, setFilters] = useState("");
+
+  const bundleCollections = useMemo(() => {
+    return data.filter((collection) => collection.collection_type === "bundle");
+  }, [data]);
 
   const query = useMemo(() => {
     return {
@@ -302,7 +292,7 @@ export default function IndexPage() {
         </Select>
       </div>
       <CollectionsTable
-        collections={data.collections}
+        collections={bundleCollections}
         filters={filters}
       />
     </div>
