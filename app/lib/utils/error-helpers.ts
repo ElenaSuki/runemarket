@@ -42,4 +42,6 @@ const ErrorMap = {
   "30015": "Check offer failed, please try again",
   "30016": "Invalid transaction",
   "30017": "Some inputs not match offer location",
+  "30018": "Invalid rune utxo",
+  "30019": "Invalid utxo",
 };

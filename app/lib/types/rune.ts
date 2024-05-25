@@ -3,6 +3,7 @@ export type RuneListed = {
   fundingReceiver: string;
   totalPrice: string;
   id: number;
+  inscriptionId: string;
 };
 
 export type AddressRuneAsset = {
@@ -20,16 +21,14 @@ export type AddressRuneAsset = {
 };
 
 export type ValidAddressRuneAsset = {
-  txid: string;
-  vout: number;
-  value: number;
-  amount: string;
   runeId: string;
-  rune: string;
-  spacedRune: string;
-  symbol: string;
-  divisibility: number;
-  type: "token" | "nft";
+  name: string;
+  merged: boolean;
+  rune: {
+    txid: string;
+    vout: number;
+    value: number;
+  };
   inscription?: {
     inscriptionId: string;
     txid: string;

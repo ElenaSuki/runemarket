@@ -51,8 +51,13 @@ export const action: ActionFunction = async ({ request }) => {
           id: {
             in: data.offers,
           },
+          lister: data.address,
         },
       });
+
+      if (offers.length === 0) {
+        throw new Error("No offers to unlist");
+      }
 
       await DatabaseInstance.activities.createMany({
         data: offers.map((item) => {

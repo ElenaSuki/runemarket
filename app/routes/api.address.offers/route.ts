@@ -29,6 +29,7 @@ export const action: ActionFunction = async ({ request }) => {
         funding_receiver: true,
         location_txid: true,
         location_vout: true,
+        inscription_id: true,
       },
       where: {
         status: 1,
@@ -52,6 +53,7 @@ export const action: ActionFunction = async ({ request }) => {
         fundingReceiver: offer.funding_receiver,
         txid: offer.location_txid,
         vout: offer.location_vout,
+        inscriptionId: offer.inscription_id || "",
       })),
     });
   } catch (e) {

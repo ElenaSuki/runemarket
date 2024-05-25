@@ -8,8 +8,11 @@ import { useBTCPrice } from "@/lib/hooks/useBTCPrice";
 import { useFetchOffer } from "@/lib/hooks/useFetchOffer";
 import { useSetSearch } from "@/lib/hooks/useSetSearch";
 import { useToast } from "@/lib/hooks/useToast";
+import QuickListModal from "@/lib/maincomponents/list/QuickListModal";
+import { useListFunctions } from "@/lib/maincomponents/list/hooks";
 import { RuneOfferType } from "@/lib/types/market";
-import { cn, formatNumber, getCollectionName, satsToBTC } from "@/lib/utils";
+import { cn, formatNumber, satsToBTC } from "@/lib/utils";
+import { formatError } from "@/lib/utils/error-helpers";
 
 import { Button } from "@/components/Button";
 import EmptyTip from "@/components/EmptyTip";
@@ -25,24 +28,19 @@ import {
 } from "@/components/Select";
 import { useWallet } from "@/components/Wallet/hooks";
 
-import {
-  useFetchAddressBalance,
-  useStoreRuneAssets,
-} from "../assets.$address/hooks/useFetchAddressBalance";
 import BulkBuyModal from "./components/BulkBuyModal";
 import BuyModal from "./components/BuyModal";
 import BuySuccessModal from "./components/BuySuccessModal";
-import EditModal from "./components/EditModal";
-import ListModal from "./components/ListModal";
 
 const SkeletonArray: number[] = new Array(20).fill(0);
 
 export default function MarketCollectionListingsPage() {
   const { offers, offersLoading, refreshOffers } = useFetchOffer("collection");
+  const { name } = useParams();
+  const { unlistOffer } = useListFunctions();
 
   const { account, setModalOpen } = useWallet();
   const { toast } = useToast();
-  const { name } = useParams();
   const { BTCPrice } = useBTCPrice();
   const { searchParams, updateSearchParams } = useSetSearch();
   const [successPayload, setSuccessPayload] = useState<{
@@ -51,24 +49,15 @@ export default function MarketCollectionListingsPage() {
     inscriptionIds: string[];
   }>();
   const [selectedOffer, setSelectedOffer] = useState<RuneOfferType>();
-  const [editOffer, setEditOffer] = useState<RuneOfferType>();
   const [filters, setFilters] = useState("");
   const [selectedOffersMap, setSelectedOffersMap] = useState<
     Map<string, RuneOfferType>
   >(new Map());
   const [bulkBuyModalOpen, setBulkBuyModalOpen] = useState(false);
+  const [quickListModalOpen, setQuickListModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const debouncedFilters = useDebounce(filters, 600);
-
-  const address = useMemo(() => {
-    return account ? account.ordinals.address : "";
-  }, [account]);
-
-  const { runes, refreshRunes, runesValidating } =
-    useFetchAddressBalance(address);
-  const { setWaitSelectedRunes, setAction, setType, action } =
-    useStoreRuneAssets();
-
   const sort = searchParams.get("sort") || "price_asc";
 
   const deleteInvalidOffers = async (invalidIds: number[]) => {
@@ -76,6 +65,30 @@ export default function MarketCollectionListingsPage() {
       ids: invalidIds,
     });
     refreshOffers();
+  };
+
+  const unlistItem = async (item: RuneOfferType) => {
+    try {
+      if (!account) {
+        throw new Error("Connect wallet to continue");
+      }
+
+      setLoading(true);
+
+      await unlistOffer({ offerIds: [item.id] });
+
+      refreshOffers();
+    } catch (e) {
+      console.log(e);
+      toast({
+        variant: "destructive",
+        duration: 3000,
+        title: "Unlist failed",
+        description: formatError(e),
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleSelectedOffer = (offer: RuneOfferType) => {
@@ -102,16 +115,6 @@ export default function MarketCollectionListingsPage() {
       setSelectedOffersMap(newMap);
     }
   };
-
-  const sameCollections = useMemo(() => {
-    if (!runes) return [];
-    return runes.filter(
-      (rune) =>
-        getCollectionName(rune.spacedRune) === name &&
-        !rune.listed &&
-        rune.type === "nft",
-    );
-  }, [runes]);
 
   const selectedOffers = useMemo(() => {
     return Array.from(selectedOffersMap.values());
@@ -230,34 +233,17 @@ export default function MarketCollectionListingsPage() {
             </Select>
             <div className="flex items-center space-x-4">
               <Button
-                disabled={runesValidating}
                 onClick={() => {
                   if (!account) {
                     setModalOpen(true);
                     return;
                   }
 
-                  if (sameCollections.length === 0) {
-                    toast({
-                      duration: 3000,
-                      variant: "destructive",
-                      title: "No same runes available",
-                      description: `You don't have any same runes to list`,
-                    });
-                    return;
-                  }
-
-                  setWaitSelectedRunes(sameCollections);
-                  setAction("list");
-                  setType("collection");
+                  setQuickListModalOpen(true);
                 }}
                 className="h-8"
               >
-                {runesValidating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Quick List"
-                )}
+                Quick List
               </Button>
             </div>
           </div>
@@ -322,10 +308,15 @@ export default function MarketCollectionListingsPage() {
                       </div>
                       {account?.ordinals.address === offer.lister ? (
                         <Button
-                          onClick={() => setEditOffer(offer)}
+                          disabled={loading}
+                          onClick={() => unlistItem(offer)}
                           className="w-full border bg-secondary transition-colors hover:opacity-100 group-hover:border-transparent group-hover:bg-theme"
                         >
-                          Edit
+                          {loading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "Unlist"
+                          )}
                         </Button>
                       ) : (
                         <div className="flex items-center space-x-4">
@@ -411,14 +402,7 @@ export default function MarketCollectionListingsPage() {
           setSuccessPayload(undefined);
         }}
       />
-      <EditModal
-        offer={editOffer}
-        onClose={() => setEditOffer(undefined)}
-        onSuccess={() => {
-          refreshOffers();
-          setEditOffer(undefined);
-        }}
-      />
+
       {selectedOffers.length > 0 && (
         <>
           <Button
@@ -436,14 +420,14 @@ export default function MarketCollectionListingsPage() {
           </Button>
         </>
       )}
-      {action === "list" && (
-        <ListModal
-          onSuccess={() => {
-            refreshRunes();
-            refreshOffers();
-          }}
-        />
-      )}
+      <QuickListModal
+        open={quickListModalOpen}
+        onClose={() => setQuickListModalOpen(false)}
+        collectionName={name || ""}
+        successCallBack={() => {
+          refreshOffers();
+        }}
+      />
     </>
   );
 }

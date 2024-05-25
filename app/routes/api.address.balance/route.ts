@@ -3,10 +3,7 @@ import { networks } from "bitcoinjs-lib";
 import { z } from "zod";
 
 import { getAddressRuneWithLocation } from "@/lib/apis/indexer/api";
-import {
-  getAddressInscriptions,
-  getAddressRuneBalanceList,
-} from "@/lib/apis/unisat/api";
+import { getAddressInscriptions } from "@/lib/apis/unisat/api";
 import { getAddressUTXOs } from "@/lib/apis/wizz";
 import { SUPPORT_TESTNET } from "@/lib/config";
 import DatabaseInstance from "@/lib/server/prisma.server";
@@ -51,46 +48,33 @@ export const action: ActionFunction = async ({ request }) => {
 
     const { scripthash } = detectAddressTypeToScripthash(data.address);
 
-    const [balance, runelocations, utxos] = await Promise.all([
-      getAddressRuneBalanceList(network, data.address),
+    const [balance, utxos] = await Promise.all([
       getAddressRuneWithLocation(data.address),
       getAddressUTXOs(network, scripthash),
     ]);
 
     const validRunes: Map<
       string,
-      Omit<ValidAddressRuneAsset, "type" | "inscription">
+      Omit<ValidAddressRuneAsset, "merged" | "inscription">
     > = new Map();
 
-    for (const rune of balance) {
-      const existLocation = runelocations.data.find(
-        (item) => item.rune_id === rune.runeid,
-      );
-
-      if (!existLocation) continue;
-
+    for (const rune of balance.data) {
       const utxo = utxos.find(
         (item) =>
-          item.txid === existLocation.location_txid &&
-          item.vout === existLocation.location_vout,
+          item.txid === rune.location_txid && item.vout === rune.location_vout,
       );
 
       if (!utxo) continue;
 
-      validRunes.set(
-        `${existLocation.location_txid}:${existLocation.location_vout}`,
-        {
+      validRunes.set(`${rune.location_txid}:${rune.location_vout}`, {
+        name: rune.rune_name,
+        runeId: rune.rune_id,
+        rune: {
           txid: utxo.txid,
           vout: utxo.vout,
           value: utxo.value,
-          amount: rune.amount,
-          runeId: rune.runeid,
-          rune: rune.rune,
-          spacedRune: rune.spacedRune,
-          symbol: rune.symbol,
-          divisibility: rune.divisibility,
         },
-      );
+      });
     }
 
     const validRunesArray = Array.from(validRunes.values());
@@ -103,7 +87,7 @@ export const action: ActionFunction = async ({ request }) => {
       where: {
         valid: 1,
         rune_spaced_name: {
-          in: validRunesArray.map((rune) => rune.spacedRune),
+          in: validRunesArray.map((rune) => rune.name),
         },
       },
     });
@@ -112,7 +96,7 @@ export const action: ActionFunction = async ({ request }) => {
 
     const formatRunes: ValidAddressRuneAsset[] = validRunesArray.map((item) => {
       const nftMatch = nftItems.find(
-        (nft) => nft.rune_spaced_name === item.spacedRune,
+        (nft) => nft.rune_spaced_name === item.name,
       );
 
       if (nftMatch) {
@@ -123,7 +107,11 @@ export const action: ActionFunction = async ({ request }) => {
         if (inscription) {
           return {
             ...item,
-            type: "nft",
+            merged:
+              inscription.utxo.txid === item.rune.txid &&
+              inscription.utxo.vout === item.rune.vout
+                ? true
+                : false,
             inscription: {
               inscriptionId: inscription.inscriptionId,
               txid: inscription.utxo.txid,
@@ -134,13 +122,13 @@ export const action: ActionFunction = async ({ request }) => {
         } else {
           return {
             ...item,
-            type: "token",
+            merged: false,
           };
         }
       } else {
         return {
           ...item,
-          type: "token",
+          merged: false,
         };
       }
     });
