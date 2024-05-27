@@ -20,8 +20,8 @@ export const useFetchOffer = () => {
   const key = useMemo(
     () =>
       filters
-        ? `${name}-${page}-${sort}-${filters}`
-        : `${name}-${page}-${sort}`,
+        ? `${name ? name : "alltoken"}-${page}-${sort}-${filters}`
+        : `${name ? name : "alltoken"}-${page}-${sort}`,
     [name, page, sort, filters],
   );
 
@@ -38,6 +38,7 @@ export const useFetchOffer = () => {
           };
         }>("/api/offer/get", {
           collection: name,
+          isToken: name ? false : true,
           filters,
           order: sort.replace("_", ":"),
           limit: 30,

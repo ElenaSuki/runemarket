@@ -8,6 +8,7 @@ import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
   collection: z.string().optional(),
+  isToken: z.boolean().optional(),
   order: z.enum(["price:asc", "price:desc", "id:asc", "id:desc"]),
   limit: z.number().min(1).max(100),
   offset: z.number().min(0),
@@ -72,7 +73,8 @@ export const action: ActionFunction = async ({ request }) => {
                 contains: data.filters,
               }
             : undefined,
-          collection_name: data.collection,
+          collection_name: data.collection ? data.collection : undefined,
+          inscription_id: data.isToken ? "" : undefined,
         },
         orderBy,
         take: data.limit,
@@ -81,7 +83,8 @@ export const action: ActionFunction = async ({ request }) => {
       DatabaseInstance.offers.count({
         where: {
           status: 1,
-          collection_name: data.collection,
+          collection_name: data.collection ? data.collection : undefined,
+          inscription_id: data.isToken ? "" : undefined,
         },
       }),
     ]);
