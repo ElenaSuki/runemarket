@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// const BaseUrl = "https://10.0.4.6:3000/api"
-const BaseUrl = "https://indexer.runemarket.top/api";
+const BaseUrl = "http://10.0.4.6:3000/api";
+// const BaseUrl = "https://indexer.runemarket.top/api";
 
 export const getAddressRuneWithLocation = async (address: string) => {
   const resp = await axios.get<{
