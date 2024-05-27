@@ -8,7 +8,7 @@ import { useToast } from "@/lib/hooks/useToast";
 import { RuneOfferType } from "@/lib/types/market";
 import { formatError } from "@/lib/utils/error-helpers";
 
-export const useFetchOffer = (type: "token" | "collection") => {
+export const useFetchOffer = () => {
   const { name } = useParams();
   const { searchParams } = useSetSearch();
   const { toast } = useToast();
@@ -20,9 +20,9 @@ export const useFetchOffer = (type: "token" | "collection") => {
   const key = useMemo(
     () =>
       filters
-        ? `${type}-${name}-${page}-${sort}-${filters}`
-        : `${type}-${name}-${page}-${sort}`,
-    [type, name, page, sort, filters],
+        ? `${name}-${page}-${sort}-${filters}`
+        : `${name}-${page}-${sort}`,
+    [name, page, sort, filters],
   );
 
   const { data, isLoading, isValidating, mutate } = useSWR(
@@ -37,10 +37,8 @@ export const useFetchOffer = (type: "token" | "collection") => {
             offers: RuneOfferType[];
           };
         }>("/api/offer/get", {
-          rune: type === "token" ? name : undefined,
-          collection: type === "collection" ? name : undefined,
+          collection: name,
           filters,
-          type,
           order: sort.replace("_", ":"),
           limit: 30,
           offset: (page - 1) * 30,

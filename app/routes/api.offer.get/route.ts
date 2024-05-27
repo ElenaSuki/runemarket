@@ -7,17 +7,8 @@ import { RuneOfferType } from "@/lib/types/market";
 import { errorResponse } from "@/lib/utils/error-helpers";
 
 const RequestSchema = z.object({
-  rune: z.string().optional(),
   collection: z.string().optional(),
-  type: z.enum(["token", "collection"]),
-  order: z.enum([
-    "amount:asc",
-    "amount:desc",
-    "price:asc",
-    "price:desc",
-    "id:asc",
-    "id:desc",
-  ]),
+  order: z.enum(["price:asc", "price:desc", "id:asc", "id:desc"]),
   limit: z.number().min(1).max(100),
   offset: z.number().min(0),
   filters: z.string().optional(),
@@ -39,12 +30,6 @@ export const action: ActionFunction = async ({ request }) => {
       [];
 
     switch (data.order) {
-      case "amount:asc":
-        orderBy.push({ amount: "asc" }, { id: "desc" });
-        break;
-      case "amount:desc":
-        orderBy.push({ amount: "desc" }, { id: "desc" });
-        break;
       case "price:asc":
         orderBy.push({ unit_price: "asc" }, { id: "desc" });
         break;
@@ -82,15 +67,12 @@ export const action: ActionFunction = async ({ request }) => {
         },
         where: {
           status: 1,
-          rune_name: data.type === "token" ? data.rune : undefined,
-          rune_spaced_name:
-            data.type === "collection" && data.filters
-              ? {
-                  contains: data.filters,
-                }
-              : undefined,
-          collection_name:
-            data.type === "collection" ? data.collection : undefined,
+          rune_spaced_name: data.filters
+            ? {
+                contains: data.filters,
+              }
+            : undefined,
+          collection_name: data.collection,
         },
         orderBy,
         take: data.limit,
@@ -99,9 +81,7 @@ export const action: ActionFunction = async ({ request }) => {
       DatabaseInstance.offers.count({
         where: {
           status: 1,
-          rune_name: data.type === "token" ? data.rune : undefined,
-          collection_name:
-            data.type === "collection" ? data.collection : undefined,
+          collection_name: data.collection,
         },
       }),
     ]);
