@@ -29,7 +29,7 @@ import { useWallet } from "@/components/Wallet/hooks";
 import BulkBuyModal from "./components/BulkBuyModal";
 import BuySuccessModal from "./components/BuySuccessModal";
 
-const SkeletonArray: number[] = new Array(20).fill(0);
+const SkeletonArray: number[] = new Array(10).fill(0);
 
 export default function MarketTokenListingsPage() {
   const { offers, offersLoading, refreshOffers } = useFetchOffer();
@@ -163,11 +163,11 @@ export default function MarketTokenListingsPage() {
             </Select>
           </div>
         </div>
-        <GridList>
+        <div className="w-full space-y-6">
           {SkeletonArray.map((_, index) => {
             return <Skeleton key={index} />;
           })}
-        </GridList>
+        </div>
       </div>
     );
   }
@@ -387,26 +387,34 @@ export default function MarketTokenListingsPage() {
 
 const Skeleton = () => {
   return (
-    <div className="group w-full overflow-hidden rounded-lg border border-transparent bg-secondary transition-colors hover:border-theme">
-      <div className="relative flex aspect-square w-full animate-pulse items-center justify-center bg-skeleton"></div>
-      <div className="w-full space-y-4 bg-card p-4">
-        <div className="h-5 w-full animate-pulse rounded-md bg-skeleton"></div>
-        <div className="flex w-full flex-col space-y-2">
+    <div className="relative w-full space-y-4 rounded-lg bg-secondary p-4">
+      <div className="w-full space-y-2">
+        <div className="h-8 w-44 animate-pulse rounded-md bg-skeleton"></div>
+        <div className=" h-6 w-20 animate-pulse rounded-md bg-skeleton"></div>
+      </div>
+      <div className="flex w-full items-center justify-between space-x-6">
+        <div className="flex shrink-0 items-center space-x-2">
           <div className="flex items-center space-x-2">
             <img
               className="h-4 w-4"
               src="/icons/btc.svg"
               alt="BTC"
             />
-            <div className="h-6 w-16 animate-pulse rounded-md bg-skeleton"></div>
+            <div className="h-6 w-20 animate-pulse rounded-md bg-skeleton"></div>
           </div>
-          <div className="text-sm text-secondary">$ -</div>
+          <div className="text-secondary">$ -</div>
         </div>
-        <div className="flex items-center space-x-4">
-          <Button className="w-full border bg-secondary transition-colors hover:border-transparent hover:bg-theme hover:opacity-100">
+        <div className="flex w-full items-center justify-end space-x-4">
+          <Button
+            disabled
+            className="border border-transparent bg-card transition-colors hover:border-theme hover:opacity-100"
+          >
             Buy
           </Button>
-          <Button className="w-10 shrink-0 border bg-secondary p-3 transition-colors hover:border-transparent hover:bg-theme hover:opacity-100">
+          <Button
+            disabled
+            className="w-10 shrink-0 border border-transparent bg-card p-3 transition-colors hover:border-theme hover:opacity-100"
+          >
             <ShoppingCart className="h-full w-full" />
           </Button>
         </div>

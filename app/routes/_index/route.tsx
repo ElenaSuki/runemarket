@@ -1,6 +1,6 @@
 import { LoaderFunction, json } from "@remix-run/node";
-import { useLoaderData, useNavigation } from "@remix-run/react";
-import { AlertCircle } from "lucide-react";
+import { useLoaderData, useNavigate, useNavigation } from "@remix-run/react";
+import { AlertCircle, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useSetSearch } from "@/lib/hooks/useSetSearch";
@@ -236,6 +236,7 @@ export default function IndexPage() {
 
   const { state } = useNavigation();
   const { searchParams, updateSearchParams } = useSetSearch();
+  const navigate = useNavigate();
 
   const [filters, setFilters] = useState("");
 
@@ -339,13 +340,22 @@ export default function IndexPage() {
         </Select>
       </div>
       {tabsType === "token" && (
-        <div className="flex items-center space-x-2 rounded-lg bg-red-700 p-2">
-          <AlertCircle className="h-4 w-4 shrink-0 text-white" />
-          <div className="text-sm text-white">
-            Items in this page only contain rune tokens, please make sure you
-            are searching for the correct page.
+        <>
+          <div className="flex items-center space-x-2 rounded-lg bg-red-700 p-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-white" />
+            <div className="text-sm text-white">
+              Items in this page only contain rune tokens, please make sure you
+              are searching for the correct page.
+            </div>
           </div>
-        </div>
+          <div
+            onClick={() => navigate("/market/all-token/listings")}
+            className="flex w-full cursor-pointer items-center justify-end space-x-1 transition-colors hover:text-theme"
+          >
+            <div>More</div>
+            <ChevronRight className="h-4 w-4" />
+          </div>
+        </>
       )}
       <CollectionsTable
         collections={filterCollections}
