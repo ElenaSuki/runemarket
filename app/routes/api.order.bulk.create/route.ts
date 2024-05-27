@@ -195,6 +195,7 @@ export const action: ActionFunction = async ({ request }) => {
             tx_id: txid,
             create_at: dayjs().unix(),
             collection_name: offer.collection_name,
+            is_token: offer.inscription_id ? 1 : undefined,
           })),
         });
         await DatabaseInstance.offers.updateMany({
