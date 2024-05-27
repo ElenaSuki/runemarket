@@ -49,12 +49,12 @@ model offers {
   location_txid    String  @db.Char(64)
   location_vout    Int     @db.UnsignedInt
   location_value   Int     @db.UnsignedInt
-  inscription_txid String? @db.Char(64)
-  inscription_vout Int?    @db.UnsignedInt
   create_at        Int     @db.UnsignedInt
   update_at        Int     @db.UnsignedInt
   collection_name  String? @db.VarChar(255)
   inscription_id   String? @db.VarChar(255)
+  inscription_txid String? @db.Char(64)
+  inscription_vout Int?    @db.UnsignedInt
 
   @@index([status, rune_name])
   @@index([status, lister])
@@ -116,7 +116,7 @@ model rune_collection {
 model rune_collection_item {
   id                 Int     @id @default(autoincrement())
   collection_name    String  @db.VarChar(255)
-  rune_id            String  @db.VarChar(255)
+  rune_id            String  @unique @db.VarChar(255)
   rune_name          String  @db.VarChar(255)
   rune_spaced_name   String  @db.VarChar(255)
   etch_tx_hash       String  @unique @db.Char(64)
