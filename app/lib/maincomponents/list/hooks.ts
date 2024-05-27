@@ -175,9 +175,11 @@ export const useListFunctions = () => {
         : networks.bitcoin,
     });
 
-    const outputValue = runeItem.merged
+    const outputValue = !runeItem.inscription
       ? Math.ceil(BTCPrice)
-      : Math.ceil(BTCPrice / 2);
+      : runeItem.merged
+        ? Math.ceil(BTCPrice)
+        : Math.ceil(BTCPrice / 2);
 
     if (outputValue < 546) {
       throw new Error("Some funding output value is less than 546 sats");
@@ -190,40 +192,24 @@ export const useListFunctions = () => {
       throw new Error("Some input value is greater than output value");
     }
 
-    if (runeItem.merged) {
-      psbt.addInput({
-        hash: runeItem.rune.txid,
-        index: runeItem.rune.vout,
-        witnessUtxo: {
-          script: account.ordinals.script,
-          value: runeItem.rune.value,
-        },
-        sighashType: 131,
-        ...getInputExtra(account.ordinals),
-      });
-
-      psbt.addOutput({
-        script: outputScript,
-        value: outputValue,
-      });
-    } else {
+    if (!runeItem.merged && runeItem.inscription) {
       psbt.addInputs([
+        {
+          hash: runeItem.inscription.txid,
+          index: runeItem.inscription.vout,
+          witnessUtxo: {
+            script: account.ordinals.script,
+            value: runeItem.inscription.value,
+          },
+          sighashType: 131,
+          ...getInputExtra(account.ordinals),
+        },
         {
           hash: runeItem.rune.txid,
           index: runeItem.rune.vout,
           witnessUtxo: {
             script: account.ordinals.script,
             value: runeItem.rune.value,
-          },
-          sighashType: 131,
-          ...getInputExtra(account.ordinals),
-        },
-        {
-          hash: runeItem.inscription!.txid,
-          index: runeItem.inscription!.vout,
-          witnessUtxo: {
-            script: account.ordinals.script,
-            value: runeItem.inscription!.value,
           },
           sighashType: 131,
           ...getInputExtra(account.ordinals),
@@ -240,6 +226,22 @@ export const useListFunctions = () => {
           value: outputValue,
         },
       ]);
+    } else {
+      psbt.addInput({
+        hash: runeItem.rune.txid,
+        index: runeItem.rune.vout,
+        witnessUtxo: {
+          script: account.ordinals.script,
+          value: runeItem.rune.value,
+        },
+        sighashType: 131,
+        ...getInputExtra(account.ordinals),
+      });
+
+      psbt.addOutput({
+        script: outputScript,
+        value: outputValue,
+      });
     }
 
     const signedPsbtHex = await connector.signPsbt(psbt.toHex(), {

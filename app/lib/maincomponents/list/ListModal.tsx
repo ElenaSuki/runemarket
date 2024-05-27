@@ -1,4 +1,4 @@
-import { Loader2, X } from "lucide-react";
+import { AlertCircle, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useBTCPrice } from "@/lib/hooks/useBTCPrice";
@@ -315,15 +315,13 @@ const ListModal: React.FC<{
                     )}
                   </div>
                   {!runeItem?.merged && !nonBundle && (
-                    <>
-                      <div className="text-sm text-red-400">
-                        Warning: your rune token and inscription not in the same
-                        UTXO
+                    <div className="flex items-center space-x-2 rounded-lg bg-red-700 p-2">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-white" />
+                      <div className="text-sm text-white">
+                        Your rune token and inscription not in the same UTXO,
+                        therefore, your funding will be split to 2 UTXOs.
                       </div>
-                      <div className="text-sm text-red-400">
-                        Your funding will be split to 2 UTXOs
-                      </div>
-                    </>
+                    </div>
                   )}
                 </>
               )}

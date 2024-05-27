@@ -165,6 +165,15 @@ export const action: ActionFunction = async ({ request }) => {
     }
 
     if (nonBundle) {
+      const runeValid = await DatabaseInstance.rune_collection_item.findUnique({
+        select: {
+          valid: true,
+        },
+        where: {
+          rune_id: data.rune_id,
+        },
+      });
+
       // only rune process
       unsignedOfferPsbt.addInput({
         hash: txidI,
@@ -216,7 +225,12 @@ export const action: ActionFunction = async ({ request }) => {
         location_txid: txidI,
         location_vout: voutI,
         location_value: valueI,
-        collection_name: getNonBundlesCollectionName(runeAsset.spacedRune),
+        collection_name: runeValid?.valid
+          ? getNonBundlesCollectionName(runeAsset.spacedRune)
+          : "",
+        inscription_id: "",
+        inscription_txid: "",
+        inscription_vout: 0,
       });
     } else {
       if (isMerged) {

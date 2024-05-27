@@ -177,7 +177,6 @@ export const getNonBundlesCollectionName = (fullName: string) => {
     "PUPPET•": "TOKEN_PUPPET",
     "PUNK•": "TOKEN_PUNK",
     "SIDS•LOGOS•": "TOKEN_SIDS_LOGOS",
-    "RUNECARDS•": "TOKEN_RUNECARDS",
     "RUNEX•UNNAMED•": "TOKEN_RUNEX_UNNAMED",
     "BLOCKPEPE•RUNES•": "TOKEN_BLOCKPEPE",
     "ENIGMA•": "TOKEN_ENIGMA",
@@ -189,5 +188,5 @@ export const getNonBundlesCollectionName = (fullName: string) => {
     }
   }
 
-  return undefined;
+  return "";
 };
