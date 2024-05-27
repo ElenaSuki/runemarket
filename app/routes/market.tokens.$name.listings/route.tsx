@@ -1,6 +1,5 @@
-import { useParams } from "@remix-run/react";
 import { useDebounce } from "@uidotdev/usehooks";
-import { Loader2, ShoppingCart, Trash2, X } from "lucide-react";
+import { ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import AxiosInstance from "@/lib/axios";
@@ -8,7 +7,6 @@ import { useBTCPrice } from "@/lib/hooks/useBTCPrice";
 import { useFetchOffer } from "@/lib/hooks/useFetchOffer";
 import { useSetSearch } from "@/lib/hooks/useSetSearch";
 import { useToast } from "@/lib/hooks/useToast";
-import QuickListModal from "@/lib/maincomponents/list/QuickListModal";
 import { useListFunctions } from "@/lib/maincomponents/list/hooks";
 import { RuneOfferType } from "@/lib/types/market";
 import { cn, formatNumber, satsToBTC } from "@/lib/utils";
@@ -29,32 +27,28 @@ import {
 import { useWallet } from "@/components/Wallet/hooks";
 
 import BulkBuyModal from "./components/BulkBuyModal";
-import BuyModal from "./components/BuyModal";
 import BuySuccessModal from "./components/BuySuccessModal";
 
 const SkeletonArray: number[] = new Array(20).fill(0);
 
-export default function MarketCollectionListingsPage() {
+export default function MarketTokenListingsPage() {
   const { offers, offersLoading, refreshOffers } = useFetchOffer();
-  const { name } = useParams();
   const { unlistOffer } = useListFunctions();
 
-  const { account, setModalOpen } = useWallet();
+  const { account } = useWallet();
   const { toast } = useToast();
   const { BTCPrice } = useBTCPrice();
   const { searchParams, updateSearchParams } = useSetSearch();
   const [successPayload, setSuccessPayload] = useState<{
     txId: string;
     price: string;
-    inscriptionIds: string[];
+    runeNames: string[];
   }>();
-  const [selectedOffer, setSelectedOffer] = useState<RuneOfferType>();
   const [filters, setFilters] = useState("");
   const [selectedOffersMap, setSelectedOffersMap] = useState<
     Map<string, RuneOfferType>
   >(new Map());
   const [bulkBuyModalOpen, setBulkBuyModalOpen] = useState(false);
-  const [quickListModalOpen, setQuickListModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const debouncedFilters = useDebounce(filters, 600);
@@ -167,14 +161,6 @@ export default function MarketCollectionListingsPage() {
                 <SelectItem value="id_desc">Recently Listed</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex items-center space-x-4">
-              <Button
-                disabled
-                className="h-8"
-              >
-                Quick List
-              </Button>
-            </div>
           </div>
         </div>
         <GridList>
@@ -231,128 +217,115 @@ export default function MarketCollectionListingsPage() {
                 <SelectItem value="id_desc">Recently Listed</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => {
-                  if (!account) {
-                    setModalOpen(true);
-                    return;
-                  }
-
-                  setQuickListModalOpen(true);
-                }}
-                className="h-8"
-              >
-                Quick List
-              </Button>
-            </div>
           </div>
         </div>
         {offers.offers.length === 0 ? (
           <EmptyTip text="No listings" />
         ) : (
           <>
-            <GridList>
+            <div className="w-full space-y-6">
               {offers.offers.map((offer) => {
                 return (
                   <div
-                    className="group w-full overflow-hidden rounded-lg border border-transparent bg-secondary transition-colors hover:border-theme"
+                    className="relative w-full space-y-4 rounded-lg bg-secondary p-4"
                     key={offer.id}
                   >
-                    <div className="relative flex aspect-square w-full items-center justify-center">
-                      <img
-                        className="h-full w-full"
-                        src={`https://ordin.s3.amazonaws.com/inscriptions/${offer.inscriptionId}`}
-                        alt={offer.spacedName}
-                      />
-                      {account?.ordinals.address === offer.lister && (
-                        <div className="absolute left-3 top-3 flex items-center rounded-lg bg-theme px-2 py-1 text-xs">
-                          Your List
-                        </div>
-                      )}
-                      <div className="absolute right-3 top-3 rounded-md bg-theme px-2 py-1 text-xs text-white">
-                        {`# ${offer.runeId}`}
-                      </div>
-                    </div>
-                    <div className="w-full space-y-4 bg-card p-4">
+                    <div className="w-full space-y-2">
                       <a
-                        href={`/rune/${offer.runeId}`}
+                        href={`https://luminex.io/rune/${offer.spacedName}`}
                         target="_blank"
-                        className="block w-full truncate break-all text-sm text-primary transition-colors hover:text-theme"
+                        className="block w-full truncate break-all font-medium text-primary transition-colors hover:text-theme"
                       >
                         {offer.spacedName}
                       </a>
-                      <div className="flex w-full flex-col space-y-2">
+                      <div className="text-sm text-secondary">{`# ${offer.runeId}`}</div>
+                    </div>
+                    <div className="flex w-full items-center justify-between space-x-6">
+                      <div className="flex shrink-0 items-center space-x-2">
                         <div className="flex items-center space-x-2">
                           <img
                             className="h-4 w-4"
                             src="/icons/btc.svg"
                             alt="BTC"
                           />
-                          <div>{satsToBTC(parseInt(offer.totalPrice))}</div>
+                          <div>
+                            {formatNumber(
+                              parseFloat(satsToBTC(parseInt(offer.totalPrice))),
+                              {
+                                precision: 8,
+                              },
+                            )}
+                          </div>
                         </div>
                         {BTCPrice ? (
-                          <div className="text-sm text-secondary">
+                          <div className="text-secondary">
                             {`$ ${formatNumber(
                               parseFloat(
                                 satsToBTC(parseInt(offer.totalPrice)),
                               ) * BTCPrice,
-                              {
-                                precision: 2,
-                              },
                             )}`}
                           </div>
                         ) : (
-                          <div className="text-sm text-secondary">$ -</div>
+                          <div className="text-secondary">$ -</div>
                         )}
                       </div>
-                      {account?.ordinals.address === offer.lister ? (
-                        <Button
-                          disabled={loading}
-                          onClick={() => unlistItem(offer)}
-                          className="w-full border bg-secondary transition-colors hover:opacity-100 group-hover:border-transparent group-hover:bg-theme"
-                        >
-                          {loading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Unlist"
-                          )}
-                        </Button>
-                      ) : (
-                        <div className="flex items-center space-x-4">
+                      <div className="flex w-full items-center justify-end space-x-4">
+                        {account &&
+                        offer.lister === account.ordinals.address ? (
                           <Button
-                            onClick={() => setSelectedOffer(offer)}
-                            className="w-full border bg-secondary transition-colors hover:border-transparent hover:bg-theme hover:opacity-100"
+                            disabled={loading}
+                            onClick={() => unlistItem(offer)}
+                            className="border border-transparent bg-card transition-colors hover:border-theme hover:opacity-100"
                           >
-                            Buy
+                            Unlist
                           </Button>
-                          <Button
-                            onClick={() => toggleSelectedOffer(offer)}
-                            className={cn(
-                              "w-10 shrink-0 border p-3 transition-colors hover:border-transparent hover:bg-theme hover:opacity-100",
-                              {
-                                "bg-secondary": !selectedOffersMap.get(
-                                  offer.id.toString(),
-                                ),
-                                "bg-red-400/30": selectedOffersMap.get(
-                                  offer.id.toString(),
-                                ),
-                              },
-                            )}
-                          >
-                            {selectedOffersMap.get(offer.id.toString()) ? (
-                              <Trash2 className="h-full w-full" />
-                            ) : (
-                              <ShoppingCart className="h-full w-full" />
-                            )}
-                          </Button>
-                        </div>
-                      )}
+                        ) : (
+                          <>
+                            <Button
+                              disabled={loading}
+                              onClick={() => {
+                                const newMap = new Map();
+                                newMap.set(offer.id.toString(), offer);
+                                setSelectedOffersMap(newMap);
+                                setBulkBuyModalOpen(true);
+                              }}
+                              className="border border-transparent bg-card transition-colors hover:border-theme hover:opacity-100"
+                            >
+                              Buy
+                            </Button>
+                            <Button
+                              onClick={() => toggleSelectedOffer(offer)}
+                              className={cn(
+                                "w-10 shrink-0 border border-transparent p-3 transition-colors hover:border-theme hover:opacity-100",
+                                {
+                                  "bg-card": !selectedOffersMap.get(
+                                    offer.id.toString(),
+                                  ),
+                                  "bg-red-400/30": selectedOffersMap.get(
+                                    offer.id.toString(),
+                                  ),
+                                },
+                              )}
+                            >
+                              {selectedOffersMap.get(offer.id.toString()) ? (
+                                <Trash2 className="h-full w-full" />
+                              ) : (
+                                <ShoppingCart className="h-full w-full" />
+                              )}
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
+                    {account && account.ordinals.address === offer.lister && (
+                      <div className="absolute right-4 top-0 rounded-md bg-theme px-2 py-1 text-xs font-bold">
+                        Your Listing
+                      </div>
+                    )}
                   </div>
                 );
               })}
-            </GridList>
+            </div>
             <Pagination
               page={parseInt(searchParams.get("page") || "1") || 1}
               total={Math.ceil(offers.count / 30)}
@@ -369,17 +342,6 @@ export default function MarketCollectionListingsPage() {
           </>
         )}
       </div>
-      <BuyModal
-        offer={selectedOffer}
-        onClose={(invalidIds) => {
-          deleteInvalidOffers(invalidIds);
-          setSelectedOffer(undefined);
-        }}
-        onSuccess={(payload) => {
-          setSelectedOffer(undefined);
-          setSuccessPayload(payload);
-        }}
-      />
       <BulkBuyModal
         open={bulkBuyModalOpen}
         setOpen={setBulkBuyModalOpen}
@@ -402,7 +364,6 @@ export default function MarketCollectionListingsPage() {
           setSuccessPayload(undefined);
         }}
       />
-
       {selectedOffers.length > 0 && (
         <>
           <Button
@@ -420,14 +381,6 @@ export default function MarketCollectionListingsPage() {
           </Button>
         </>
       )}
-      <QuickListModal
-        open={quickListModalOpen}
-        onClose={() => setQuickListModalOpen(false)}
-        collectionName={name || ""}
-        successCallBack={() => {
-          refreshOffers();
-        }}
-      />
     </>
   );
 }

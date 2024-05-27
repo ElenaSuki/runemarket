@@ -1,5 +1,6 @@
 import { LoaderFunction, json } from "@remix-run/node";
 import { useLoaderData, useNavigation } from "@remix-run/react";
+import { AlertCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useSetSearch } from "@/lib/hooks/useSetSearch";
@@ -338,9 +339,12 @@ export default function IndexPage() {
         </Select>
       </div>
       {tabsType === "token" && (
-        <div className="text-sm text-secondary">
-          Warning: items in this page only contain rune tokens, please make sure
-          you are searching for the correct page.
+        <div className="flex items-center space-x-2 rounded-lg bg-red-700 p-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-white" />
+          <div className="text-sm text-white">
+            Items in this page only contain rune tokens, please make sure you
+            are searching for the correct page.
+          </div>
         </div>
       )}
       <CollectionsTable

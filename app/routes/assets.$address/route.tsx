@@ -258,40 +258,47 @@ const RuneBalance: React.FC<{
                           />
                           {item.listed &&
                             address === account?.ordinals.address && (
-                              <div className="absolute bottom-0 left-0 right-0 flex h-8 items-center justify-between space-x-2 bg-black/60 px-2 text-white">
-                                <div className="flex items-center space-x-2">
-                                  <img
-                                    className="h-4 w-4"
-                                    src="/icons/btc.svg"
-                                    alt="BTC"
-                                  />
-                                  <div>
-                                    {formatNumber(
-                                      parseFloat(
-                                        satsToBTC(
-                                          parseInt(item.listed.totalPrice),
-                                        ),
-                                      ),
-                                      {
-                                        precision: 8,
-                                      },
-                                    )}
-                                  </div>
+                              <>
+                                <div className="absolute left-3 top-3 rounded-lg bg-theme px-2 py-1 text-xs font-medium">
+                                  {item.listed.inscriptionId
+                                    ? "Bundle"
+                                    : "Only Rune"}
                                 </div>
-                                {BTCPrice ? (
-                                  <div className="text-secondary">
-                                    {`$ ${formatNumber(
-                                      parseFloat(
-                                        satsToBTC(
-                                          parseInt(item.listed.totalPrice),
+                                <div className="absolute bottom-0 left-0 right-0 flex h-8 items-center justify-between space-x-2 bg-black/60 px-2 text-white">
+                                  <div className="flex items-center space-x-2">
+                                    <img
+                                      className="h-4 w-4"
+                                      src="/icons/btc.svg"
+                                      alt="BTC"
+                                    />
+                                    <div>
+                                      {formatNumber(
+                                        parseFloat(
+                                          satsToBTC(
+                                            parseInt(item.listed.totalPrice),
+                                          ),
                                         ),
-                                      ) * BTCPrice,
-                                    )}`}
+                                        {
+                                          precision: 8,
+                                        },
+                                      )}
+                                    </div>
                                   </div>
-                                ) : (
-                                  <div className="text-secondary">$ -</div>
-                                )}
-                              </div>
+                                  {BTCPrice ? (
+                                    <div className="text-secondary">
+                                      {`$ ${formatNumber(
+                                        parseFloat(
+                                          satsToBTC(
+                                            parseInt(item.listed.totalPrice),
+                                          ),
+                                        ) * BTCPrice,
+                                      )}`}
+                                    </div>
+                                  ) : (
+                                    <div className="text-secondary">$ -</div>
+                                  )}
+                                </div>
+                              </>
                             )}
                         </div>
                         <div className="w-full space-y-4 bg-card p-2">
