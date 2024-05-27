@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { pushTx } from "@/lib/apis/mempool";
 import DatabaseInstance from "@/lib/server/prisma.server";
-import RedisInstance from "@/lib/server/redis.server";
 import { isTestnetAddress, reverseBuffer } from "@/lib/utils/address-helpers";
 import { validateInputSignature } from "@/lib/utils/bitcoin-utils";
 import { errorResponse, formatError } from "@/lib/utils/error-helpers";
@@ -173,6 +172,7 @@ export const action: ActionFunction = async ({ request }) => {
             tx_id: txid,
             create_at: dayjs().unix(),
             collection_name: offer.collection_name,
+            is_token: offer.inscription_id ? 1 : undefined,
           })),
         });
         await DatabaseInstance.offers.updateMany({

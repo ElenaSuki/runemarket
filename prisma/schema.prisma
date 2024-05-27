@@ -23,11 +23,13 @@ model orders {
   tx_id           String  @db.Char(64)
   create_at       Int     @db.UnsignedInt
   collection_name String? @db.VarChar(255)
+  is_token        Int?    @db.UnsignedTinyInt
 
   @@index([rune_id])
   @@index([rune_name])
   @@index([lister, buyer])
   @@index([collection_name])
+  @@index([is_token])
 }
 
 model offers {
