@@ -73,6 +73,16 @@ export const action: ActionFunction = async ({ request }) => {
           !offer.inscription_txid ||
           offer.inscription_vout === null
         ) {
+          await RedisInstance.set(
+            `offer:${offer.id}:valid`,
+            "true",
+            "EX",
+            60 * 3,
+            "NX",
+          );
+
+          validOfferIds.push(offer.id);
+
           continue;
         }
 

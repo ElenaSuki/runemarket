@@ -44,4 +44,5 @@ const ErrorMap = {
   "30017": "Some inputs not match offer location",
   "30018": "Invalid rune utxo",
   "30019": "Invalid utxo",
+  "30020": "Some offers contain inscription",
 };
