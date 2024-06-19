@@ -19,7 +19,7 @@ export const getAddressUTXOs = async (network: Network, scriptHash: string) => {
     },
   });
 
-  return resp.data.response.filter((item) => item.atomicals.length === 0);
+  return resp.data.response;
 };
 
 export const pushTransaction = async (network: Network, txHex: string) => {
