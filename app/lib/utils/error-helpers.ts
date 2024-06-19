@@ -45,4 +45,5 @@ const ErrorMap = {
   "30018": "Invalid rune utxo",
   "30019": "Invalid utxo",
   "30020": "Some offers contain inscription",
+  "30021": "down for maintenance",
 };

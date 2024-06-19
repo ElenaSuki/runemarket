@@ -9,6 +9,7 @@ import {
   getAddressRuneUTXOsByUnisat,
   getRuneInfo,
 } from "@/lib/apis/unisat/api";
+import { DOWN } from "@/lib/config";
 import DatabaseInstance from "@/lib/server/prisma.server";
 import {
   OfferCreateReqSchema,
@@ -34,6 +35,10 @@ type RequestSchemaType = z.infer<typeof RequestSchema>;
 
 export const action: ActionFunction = async ({ request }) => {
   try {
+    if (DOWN) {
+      return json(errorResponse(30021));
+    }
+
     const data: RequestSchemaType = await request.json();
 
     try {
